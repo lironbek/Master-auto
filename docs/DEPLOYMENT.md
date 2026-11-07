@@ -3,7 +3,7 @@
 | רכיב | Vercel project | כתובת | מקור |
 |---|---|---|---|
 | API (FastAPI) | `master-auto-api` | https://master-auto-api-lirons-projects-afcef793.vercel.app | `server/` ברפו `lironbek/master-auto`, ענף `main` |
-| UI (Vite) | `master-auto` | https://master-auto-lirons-projects-afcef793.vercel.app | `web/` ברפו `lironbek/master-auto`, ענף `main` |
+| UI (Vite) | `master-auto` | https://master-auto-lake.vercel.app | `web/` ברפו `lironbek/master-auto`, ענף `main` |
 | מסד נתונים | Supabase project `pt` (eu-central-1) | session pooler `aws-1-eu-central-1.pooler.supabase.com:5432`, role `pt_app` | מיגרציות `server/pt_agent/db/migrations` |
 
 ה-UI מפנה `/api/*` לשרת (rewrite ב-`web/vercel.json`), כך שהדפדפן רואה origin אחד.
