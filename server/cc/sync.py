@@ -61,6 +61,12 @@ def run_connection_sync(store, org_id: str, connection: Row, *, actor: str = "sy
         return _fail(store, org_id, connection, "error", f"ingest: {type(exc).__name__}: {exc}"[:300], summary)
 
     status = "partial" if result.partial else "ok"
+    if _disconnected_meanwhile(store, org_id, connection):
+        # The user disconnected while this sync was running: their decision wins,
+        # the status is not written back to "ok".
+        summary["status"] = "disconnected"
+        summary["notes"] = ["connection was disconnected during the sync"]
+        return summary
     store.update("connections", connection["id"], organization_id=org_id, patch={
         "status": status, "last_sync_at": iso(), "last_error": "", "coverage": result.coverage,
         "capabilities": list(result.coverage), "notes": result.notes,
@@ -76,16 +82,27 @@ def _ingest(store, org_id: str, connection: Row, result: SyncResult, summary: di
     # Every catalog row of this provider in the workspace, whoever reported it:
     # the unique key is (workspace, provider, kind, external_id), so an insert
     # must never race a row owned by another (or no) connection.
-    all_rows = store.list("cc_assets", organization_id=org_id, workspace_id=ws, provider=provider)
+    org_rows = store.list("cc_assets", organization_id=org_id, provider=provider)
+    all_rows = [a for a in org_rows if a["workspace_id"] == ws]
     by_identity = {(a["kind"], a["external_id"]): a for a in all_rows}
     by_name = {(a["kind"], a["name"].lower()): a for a in all_rows if not a.get("connection_id")}
+    # A workspace is a permission boundary (PRD section 2): an asset that already
+    # lives in another workspace of the organisation (seeded or synced there) is
+    # not duplicated here, even when the same account token can see it.
+    elsewhere = {(a["kind"], a["external_id"]) for a in org_rows if a["workspace_id"] != ws} | \
+                {(a["kind"], a["name"].lower()) for a in org_rows if a["workspace_id"] != ws}
     mine = {a["external_id"]: a for a in all_rows if a.get("connection_id") == cid}
     seen: set[str] = set()
     ext_to_asset_id: dict[str, str] = {}
+    skipped_elsewhere = 0
 
     # --- assets -----------------------------------------------------------
     for rec in result.assets:
         seen.add(rec.external_id)
+        if (rec.kind, rec.external_id) not in by_identity and (rec.kind, rec.name.lower()) not in by_name and \
+                ((rec.kind, rec.external_id) in elsewhere or (rec.kind, rec.name.lower()) in elsewhere):
+            skipped_elsewhere += 1
+            continue
         patch = {
             "kind": rec.kind, "name": rec.name, "provider": provider, "environment": rec.environment,
             "state": rec.state, "url": rec.url, "last_seen_at": iso(), "source_updated_at": rec.source_updated_at,
@@ -117,10 +134,15 @@ def _ingest(store, org_id: str, connection: Row, result: SyncResult, summary: di
                 _inbox(store, org_id, ws, cur["id"], "missing_source", "נעלם בסנכרון מלא עם אותו היקף הרשאה", summary)
                 summary["removed"] += 1
 
+    if skipped_elsewhere:
+        result.notes.append(f"{skipped_elsewhere} נכסים שייכים למרחב אחר ולא שוכפלו")
+
     # --- events -----------------------------------------------------------
     assigned = assignment_index(store, org_id)
     for ev in result.events:
         asset_id = ext_to_asset_id.get(ev.asset_external_id) or (mine.get(ev.asset_external_id) or {}).get("id")
+        if asset_id is None:
+            continue   # event of an asset that lives in another workspace (or unknown)
         project_id = assigned.get(asset_id) if asset_id else None
         key_rows = store.list("activity_events", organization_id=org_id, workspace_id=ws, connection_id=cid, external_id=ev.external_id)
         row = {
@@ -151,7 +173,16 @@ def _ingest(store, org_id: str, connection: Row, result: SyncResult, summary: di
                    occurred_at=ev.occurred_at)
 
 
+def _disconnected_meanwhile(store, org_id, connection) -> bool:
+    cur = store.get("connections", connection["id"], organization_id=org_id)
+    return cur is None or cur.get("status") == "disconnected"
+
+
 def _fail(store, org_id, connection, status, message, summary):
+    if _disconnected_meanwhile(store, org_id, connection):
+        summary["status"] = "disconnected"
+        summary["notes"] = [message]
+        return summary
     store.update("connections", connection["id"], organization_id=org_id, patch={"status": status, "last_error": message[:300]})
     if status == "reauth":
         _alert(store, org_id, connection["workspace_id"], "permission", "connection", connection["id"],

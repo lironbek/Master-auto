@@ -273,3 +273,39 @@ def test_run_window_is_enforced(client):
     client.post(f"/pt/scope-versions/{s['id']}/approve", headers=h)
     r = client.post("/pt/runs", json={"scope_version_id": s["id"]}, headers=h)
     assert r.status_code == 409 and "window" in r.json()["detail"]
+
+
+def test_disconnect_during_sync_is_not_overwritten(client, monkeypatch):
+    h = _login(client)
+    ws = _workspace(client, h)
+    con = client.post("/cc/connections", json={"workspace_id": ws["id"], "provider": "github", "secret": "ghp_x"}, headers=h).json()
+    from pt_agent.storage import get_store
+    org = client.get("/auth/me", headers=h).json()["organization"]["id"]
+
+    def slow_sync(self, *, since=None):
+        # the user presses "disconnect" while the provider call is in flight
+        get_store().update("connections", con["id"], organization_id=org, patch={"status": "disconnected", "secret_enc": ""})
+        return SyncResult(assets=list(FakeConnector.assets), events=[], coverage={"inventory": "full"})
+
+    monkeypatch.setattr(FakeConnector, "sync", slow_sync)
+    s = client.post(f"/cc/connections/{con['id']}/sync", headers=h).json()
+    assert s["status"] == "disconnected"
+    assert client.get("/cc/connections", headers=h).json()[0]["status"] == "disconnected"
+
+
+def test_asset_owned_by_another_workspace_is_not_duplicated(client):
+    h = _login(client)
+    ws_work = _workspace(client, h)
+    ws_private = client.post("/cc/workspaces", json={"name": "Private"}, headers=h).json()
+    from pt_agent.storage import get_store
+    org = client.get("/auth/me", headers=h).json()["organization"]["id"]
+    # Seeded into the work workspace (name-only identity, no connection).
+    get_store().insert("cc_assets", {"id": "ast_work_seed", "organization_id": org, "workspace_id": ws_work["id"], "connection_id": None,
+                                     "external_id": "acme/app", "kind": "repo", "name": "acme/app", "provider": "github",
+                                     "environment": "development", "state": "", "url": "", "description": "", "created_at": "2026-11-01T00:00:00+00:00"})
+    con = client.post("/cc/connections", json={"workspace_id": ws_private["id"], "provider": "github", "secret": "ghp_x"}, headers=h).json()
+    s = client.post(f"/cc/connections/{con['id']}/sync", headers=h).json()
+    assert s["assets"] == 0 and s["events"] == 0 and any("מרחב אחר" in n for n in s["notes"])
+    assets = client.get("/cc/assets", headers=h).json()
+    assert [a["id"] for a in assets] == ["ast_work_seed"]
+    assert client.get(f"/cc/inbox?workspace_id={ws_private['id']}", headers=h).json() == []
