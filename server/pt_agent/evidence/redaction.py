@@ -22,16 +22,18 @@ REDACTED = "[REDACTED]"
 _PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("aws_key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
     ("jwt", re.compile(r"\beyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\b")),
-    ("bearer", re.compile(r"(?i)\b(bearer)\s+[A-Za-z0-9._\-]{8,}")),
+    ("bearer", re.compile(r"(?i)\b(bearer)\s+([A-Za-z0-9._\-]{8,})")),
     ("private_key", re.compile(
         r"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----.*?-----END (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----",
         re.DOTALL,
     )),
+    # key=value, key: value and JSON ("key": "value") forms; the value stops at
+    # whitespace, quotes and JSON/query delimiters.
     ("api_key_kv", re.compile(
-        r"(?i)\b(api[_-]?key|apikey|secret|token|passwd|password|pwd)\b\s*[=:]\s*[\"']?([^\s\"'&]{4,})",
+        r"(?i)[\"']?\b(api[_-]?key|apikey|secret|token|passwd|password|pwd)\b[\"']?\s*[=:]\s*[\"']?([^\s\"'&,}\[\]]{4,})",
     )),
-    ("authorization_header", re.compile(r"(?im)^(authorization)\s*:\s*.+$")),
-    ("set_cookie", re.compile(r"(?im)^(set-cookie|cookie)\s*:\s*.+$")),
+    ("authorization_header", re.compile(r"(?im)^(authorization)\s*:\s*(.+)$")),
+    ("set_cookie", re.compile(r"(?im)^(set-cookie|cookie)\s*:\s*(.+)$")),
     ("email", re.compile(r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b")),
     ("credit_card", re.compile(r"\b(?:\d[ -]*?){13,16}\b")),
 ]
@@ -77,20 +79,27 @@ def redact(text: str, *, org_key: bytes | None = None) -> RedactionResult:
     for kind, pattern in _PATTERNS:
         def _replace(match: re.Match[str]) -> str:
             raw = match.group(0)
+            groups = match.groups()
             if org_key is not None:
-                # Fingerprint the most secret capture group available.
-                secret = match.groups()[-1] if match.groups() else raw
+                # Fingerprint the secret itself: the last capture group of a
+                # labelled pattern, or the whole match for bare patterns.
+                secret = groups[-1] if groups and groups[-1] else raw
                 result.fingerprints.setdefault(kind, []).append(
                     fingerprint(secret, org_key=org_key)
                 )
-            # Preserve a leading label (e.g. "password=") for readability.
-            if match.groups() and match.group(1) and "=" in raw or ":" in raw:
-                label = match.group(1)
-                sep = "=" if "=" in raw else ":"
-                return f"{label}{sep}{REDACTED}"
+            # Preserve the label and separator (e.g. `password=`, `"password": "`)
+            # so the surrounding structure stays readable; only the value goes.
+            if len(groups) >= 2 and groups[0] and groups[-1]:
+                prefix = raw[: match.start(len(groups)) - match.start(0)]
+                return f"{prefix}{REDACTED}"
             return REDACTED
 
-        new_text, n = pattern.subn(_replace, result.text)
+        try:
+            new_text, n = pattern.subn(_replace, result.text)
+        except RedactionError:
+            raise
+        except Exception as exc:  # any failure must fail closed, never leak
+            raise RedactionError(f"redaction failed on {kind}: {type(exc).__name__}") from exc
         if n:
             result.hit_kinds.append(kind)
             result.text = new_text

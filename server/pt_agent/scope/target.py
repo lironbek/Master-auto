@@ -7,6 +7,7 @@ allowlist, so that encoding tricks cannot smuggle a request past the boundary.
 from __future__ import annotations
 
 import ipaddress
+import posixpath
 from dataclasses import dataclass
 from urllib.parse import urlsplit, unquote
 
@@ -64,12 +65,21 @@ def normalize(url: str) -> NormalizedTarget:
     host = _normalize_host(parts.hostname or "")
     port = parts.port or DEFAULT_PORTS[scheme]
 
-    # Percent-decode and collapse the path for prefix comparison.
+    # Percent-decode and collapse the path for prefix comparison. Dot segments
+    # are resolved the way a server would (%2e%2e, .., .), so a path cannot
+    # climb out of an approved prefix; a path that still contains ".." after
+    # normalisation (e.g. a double-encoded one) is refused outright.
     path = unquote(parts.path or "/")
     while "//" in path:
         path = path.replace("//", "/")
     if not path.startswith("/"):
         path = "/" + path
+    trailing = path.endswith("/") and path != "/"
+    path = posixpath.normpath(path)
+    if path.startswith("/..") or ".." in path.split("/"):
+        raise TargetParseError("path escapes its root")
+    if trailing and not path.endswith("/"):
+        path += "/"
 
     return NormalizedTarget(scheme=scheme, host=host, port=port, path=path, raw=url)
 

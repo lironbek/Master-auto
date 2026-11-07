@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, type Overview as OverviewData } from '../../api'
 import { Card, Empty, ErrorBox, Spinner, Stat } from '../../components/ui'
 import { ConnPill, EventRow, FirstWorkspace, TonePill } from '../../components/cc'
-import { alertKind, assetKind, fmtDate, provider, sessionStatus, t } from '../../i18n'
+import { alertKind, assetKind, fmtDate, provider, sessionStatus, sessionTool, t } from '../../i18n'
 import { useWorkspace } from '../../workspace'
 
 export default function Overview() {
@@ -14,7 +14,7 @@ export default function Overview() {
   useEffect(() => {
     if (loading || workspaces.length === 0) return
     let alive = true
-    const load = () => api.get<OverviewData>(`/cc/overview${qs}`).then(d => alive && setData(d)).catch(setError)
+    const load = () => api.get<OverviewData>(`/cc/overview${qs}`).then(d => { if (alive) { setData(d); setError(null) } }).catch(err => alive && setError(err))
     load()
     const id = setInterval(load, 30_000)
     return () => { alive = false; clearInterval(id) }
@@ -22,12 +22,14 @@ export default function Overview() {
 
   if (loading) return <Spinner />
   if (workspaces.length === 0) return <FirstWorkspace />
-  if (error) return <ErrorBox error={error} />
+  if (error && !data) return <ErrorBox error={error} />
   if (!data) return <Spinner />
 
-  const stale = data.connections.filter(c => c.freshness?.stale && ['ok', 'partial'].includes(c.status))
+  const active = data.projects.filter(p => p.status === 'active')
+  const stale = data.connections.filter(c => c.freshness?.stale && ['ok', 'partial', 'error'].includes(c.status))
   return (
     <div className="space-y-6">
+      <ErrorBox error={error} />
       <section className="rounded-2xl bg-gradient-to-l from-slate-900 to-sky-900 p-6 text-white">
         <div className="text-xs font-semibold text-teal-300">{current ? current.name : 'כל המרחבים'}</div>
         <h1 className="mt-1 text-2xl font-bold">מרכז הבקרה</h1>
@@ -35,7 +37,7 @@ export default function Overview() {
       </section>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Link to="/projects" className="contents"><Stat label="פרויקטים פעילים" value={data.projects.length} tone="indigo" /></Link>
+        <Link to="/projects" className="contents"><Stat label="פרויקטים פעילים" value={active.length} tone="indigo" /></Link>
         <Link to="/assets" className="contents"><Stat label="נכסים בקטלוג" value={data.assets_total} hint={Object.entries(data.assets_by_kind).map(([k, v]) => `${t(assetKind, k)} ${v}`).join(' · ') || 'אין נכסים עדיין'} /></Link>
         <Link to="/sessions" className="contents"><Stat label="סשנים פתוחים" value={data.open_sessions.length} tone="amber" /></Link>
         <Link to="/inbox" className="contents"><Stat label="ממתינים לשיוך" value={data.inbox_open} hint={`${data.unassigned} נכסים ללא פרויקט`} tone={data.inbox_open ? 'rose' : 'slate'} /></Link>
@@ -43,9 +45,9 @@ export default function Overview() {
 
       <div className="grid gap-4 lg:grid-cols-5">
         <Card title="הפרויקטים שלי" className="lg:col-span-3" actions={<Link to="/projects" className="text-xs text-indigo-600">הכול</Link>}>
-          {data.projects.length === 0 ? <Empty>אין פרויקטים. צור פרויקט או שייך נכסים מתיבת המיון.</Empty> : (
+          {active.length === 0 ? <Empty>אין פרויקטים. צור פרויקט או שייך נכסים מתיבת המיון.</Empty> : (
             <ul className="divide-y divide-slate-100">
-              {data.projects.map(p => (
+              {active.map(p => (
                 <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                   <div className="min-w-0">
                     <Link to={`/projects/${p.id}`} className="font-semibold text-indigo-700">{p.name}</Link>
@@ -77,7 +79,7 @@ export default function Overview() {
         <Card title="סשנים פתוחים" actions={<Link to="/sessions" className="text-xs text-indigo-600">הכול</Link>}>
           {data.open_sessions.length === 0 ? <Empty>אין סשנים פתוחים.</Empty> : (
             <ul className="divide-y divide-slate-100 text-sm">
-              {data.open_sessions.map(s => <li key={s.id} className="flex items-center justify-between py-2"><Link to={`/sessions/${s.id}`} className="text-indigo-700">{s.title}</Link><span className="text-xs text-slate-500">{s.tool} · {t(sessionStatus, s.status)}</span></li>)}
+              {data.open_sessions.map(s => <li key={s.id} className="flex items-center justify-between py-2"><Link to={`/sessions/${s.id}`} className="text-indigo-700">{s.title}</Link><span className="text-xs text-slate-500">{t(sessionTool, s.tool)} · {t(sessionStatus, s.status)}</span></li>)}
             </ul>
           )}
         </Card>

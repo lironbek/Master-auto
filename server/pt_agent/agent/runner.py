@@ -62,34 +62,53 @@ def lab_allow_internal() -> bool:
     return os.environ.get("PT_ALLOW_INTERNAL_TARGETS") == "1"
 
 
+def _pin(url: str, host: str, ip: str) -> tuple[str, dict[str, str], dict[str, Any]]:
+    """Rewrite *url* to connect to the vetted address *ip* while keeping the
+    original hostname for the Host header, TLS SNI and certificate check, so a
+    second DNS answer cannot redirect the request (DNS rebinding)."""
+    u = httpx.URL(url)
+    pinned = u.copy_with(host=ip)   # httpx brackets IPv6 literals itself
+    headers = {"Host": u.netloc.decode()}
+    return str(pinned), headers, {"sni_hostname": host}
+
+
 def make_fetch(validator: EgressValidator, budget: BudgetState):
     """Return a bounded fetch(url) -> text that re-validates redirects and the
-    addresses the hostname resolves to (PRD section 9)."""
+    addresses the hostname resolves to (PRD section 9). The connection is made
+    to the address that was checked, never to a fresh resolution."""
 
-    def guard(url: str) -> None:
+    def guard(url: str) -> tuple[str, list[str]]:
         d = validator.check(url)
         if not d.allowed:
             raise PermissionError(f"egress blocked: {d.reason}")
         assert d.target is not None
-        r = validator.check_resolved(d.target.host, _resolve(d.target.host))
+        ips = _resolve(d.target.host)
+        r = validator.check_resolved(d.target.host, ips)
         if not r.allowed:
             raise PermissionError(f"egress blocked: {r.reason}")
+        return d.target.host, ips
+
+    def get(client: httpx.Client, url: str, host: str, ips: list[str]) -> httpx.Response:
+        if not ips or validator.allow_internal:
+            return client.get(url)   # lab mode / literal address: nothing to pin
+        pinned, headers, ext = _pin(url, host, ips[0])
+        return client.get(pinned, headers=headers, extensions=ext)
 
     def fetch(url: str) -> str:
-        guard(url)
+        host, ips = guard(url)
         with httpx.Client(timeout=FETCH_TIMEOUT, follow_redirects=False,
                           headers={"User-Agent": "pt-agent-passive/0.1"}) as client:
-            r = client.get(url)
+            r = get(client, url, host, ips)
             hops = 0
             while r.is_redirect and hops < 3:
                 loc = r.headers.get("location", "")
                 target = str(httpx.URL(url).join(loc))
                 try:
-                    guard(target)
+                    host, ips = guard(target)
                 except PermissionError as exc:
                     raise PermissionError(f"redirect blocked: {exc} -> {target}") from exc
                 url = target
-                r = client.get(url)
+                r = get(client, url, host, ips)
                 hops += 1
                 budget.charge_request()
         body = r.content[:MAX_BODY_BYTES].decode(r.encoding or "utf-8", errors="replace")
@@ -138,7 +157,8 @@ def execute_run(run: ScanRun, scope: ScopeVersion, authorization: Authorization,
     validator = EgressValidator(scope, allow_internal=lab_allow_internal())
     budget = BudgetState(budget=scope.budget)
     gateway = ToolGateway(validator)
-    modules = [m for m in scope.allowed_modules if m in PASSIVE_MODULES] or list(PASSIVE_MODULES)
+    # Only modules the approved scope names run; an empty list runs nothing.
+    modules = [m for m in scope.allowed_modules if m in PASSIVE_MODULES]
     for name in modules:
         gateway.register(PASSIVE_MODULES[name]())
     vault = EvidenceVault()
@@ -154,7 +174,7 @@ def execute_run(run: ScanRun, scope: ScopeVersion, authorization: Authorization,
         return ActionFacts(
             action=action,
             in_scope=validator.check(url).allowed if url else False,
-            module_approved=action.module in modules,
+            module_approved=action.module in scope.allowed_modules,
             authorization_valid=authorization.is_valid_at(),
             uses_admin_role=False, found_credential_use=False, mass_download=False,
             unexpected_real_data=False, availability_impact=False,
@@ -165,8 +185,16 @@ def execute_run(run: ScanRun, scope: ScopeVersion, authorization: Authorization,
                      budget=budget, facts_builder=facts_builder, org_key=org_key)
     fetch = make_fetch(validator, budget)
 
-    audit("run.start", "ok", f"mode={run.mode.value} targets={len(scope.targets)} modules={','.join(modules)}")
+    audit("run.start", "ok", f"mode={run.mode.value} targets={len(scope.targets)} modules={','.join(modules) or '(none approved)'}")
     summary = {"actions": 0, "executed": 0, "blocked": 0, "findings": 0, "evidence": 0, "errors": 0}
+    if not modules:
+        status = RunStatus.COMPLETED
+        store.update("scan_runs", run.id, organization_id=run.organization_id, patch={
+            "status": status.value, "stopped_at": _now().isoformat(), "stop_reason": "no approved modules",
+            "summary": summary, "budget_used": {"requests": 0, "elapsed_seconds": 0.0},
+        })
+        audit("run.finish", status.value, "no approved modules in scope")
+        return summary
 
     for tspec in scope.targets:
         url = target_url(tspec)

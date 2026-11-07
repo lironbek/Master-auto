@@ -83,3 +83,7 @@ class SupabaseStore:
         params["limit"] = "1"
         rows = self._req("GET", table, params=params)
         return _merge(rows[0]) if rows else None
+
+    def list_organization_ids(self) -> list[str]:
+        rows = self._req("GET", "organizations", params={"select": "id", "order": "created_at"})
+        return [r["id"] for r in rows]

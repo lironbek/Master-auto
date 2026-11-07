@@ -7,6 +7,8 @@ from typing import Any, Optional
 
 from .base import AssetRecord, EventRecord, SyncResult, classify_http_error, make_client
 
+MAX_PAGES = 10
+
 
 class N8nConnector:
     provider = "n8n"
@@ -28,10 +30,21 @@ class N8nConnector:
     def sync(self, *, since: Optional[datetime] = None) -> SyncResult:
         res = SyncResult(coverage={"inventory": "full", "executions": "full"})
         with self._client() as c:
-            r = c.get(f"{self.base}/api/v1/workflows", params={"limit": 100})
-            if r.status_code >= 400:
-                raise classify_http_error(r)
-            for wf in r.json().get("data", []):
+            workflows: list[dict] = []
+            cursor = None
+            for _ in range(MAX_PAGES):
+                r = c.get(f"{self.base}/api/v1/workflows", params={"limit": 100, **({"cursor": cursor} if cursor else {})})
+                if r.status_code >= 400:
+                    raise classify_http_error(r)
+                body = r.json()
+                workflows.extend(body.get("data", []))
+                cursor = body.get("nextCursor")
+                if not cursor:
+                    break
+            else:
+                res.coverage["inventory"] = "partial"; res.partial = True
+                res.notes.append(f"inventory truncated after {MAX_PAGES * 100} workflows")
+            for wf in workflows:
                 res.assets.append(AssetRecord(
                     external_id=str(wf["id"]), kind="workflow", name=wf.get("name", str(wf["id"])), environment="production",
                     state="active" if wf.get("active") else "inactive", url=f"{self.base}/workflow/{wf['id']}",

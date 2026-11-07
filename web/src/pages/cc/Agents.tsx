@@ -26,7 +26,7 @@ export default function Agents() {
 
   async function save(e: FormEvent) {
     e.preventDefault(); const fd = new FormData(e.target as HTMLFormElement)
-    const body = { workspace_id: fd.get('workspace_id'), project_id: fd.get('project_id') || null, name: fd.get('name'), instructions: fd.get('instructions'), provider: 'anthropic', model: fd.get('model'), key_id: fd.get('key_id') || null, tools: ['catalog.read'], allowed_projects: Array.from(fd.getAll('allowed_projects')).map(String), limits: { max_steps: Number(fd.get('max_steps')), max_seconds: Number(fd.get('max_seconds')), max_tokens: Number(fd.get('max_tokens')), max_cost_usd: Number(fd.get('max_cost_usd')) }, approval_rule: 'read_only', enabled: fd.get('enabled') === 'on' }
+    const body = { workspace_id: fd.get('workspace_id'), project_id: fd.get('project_id') || null, name: fd.get('name'), instructions: fd.get('instructions'), owner: editing?.owner ?? '', provider: 'anthropic', model: fd.get('model'), key_id: fd.get('key_id') || null, tools: ['catalog.read'], allowed_projects: Array.from(fd.getAll('allowed_projects')).map(String), limits: { max_steps: Number(fd.get('max_steps')), max_seconds: Number(fd.get('max_seconds')), max_tokens: Number(fd.get('max_tokens')), max_cost_usd: Math.max(0, Number(fd.get('max_cost_usd'))) }, approval_rule: 'read_only', enabled: fd.get('enabled') === 'on' }
     try { if (editing?.id) await api.patch(`/cc/agents/${editing.id}`, body); else await api.post('/cc/agents', body); setEditing(null); load() } catch (err) { setError(err) }
   }
   async function run(a: CcAgent) {
@@ -49,7 +49,7 @@ export default function Agents() {
       <ErrorBox error={error} />
       {editing && (
         <Card title={editing.id ? `עריכת ${editing.name}` : 'הגדרת סוכן'} actions={<button className="btn-secondary" onClick={() => setEditing(null)}>ביטול</button>}>
-          <form onSubmit={save} className="grid gap-3 md:grid-cols-3">
+          <form key={editing.id ?? current?.id ?? 'new'} onSubmit={save} className="grid gap-3 md:grid-cols-3">
             <Field label="מרחב"><select className="input" name="workspace_id" defaultValue={wsId} disabled={!!editing.id} onChange={e => setEditing({ ...editing, workspace_id: e.target.value })}>{workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select>{editing.id && <input type="hidden" name="workspace_id" value={editing.workspace_id} />}</Field>
             <Field label="שם"><input className="input" name="name" defaultValue={editing.name} required maxLength={80} /></Field>
             <Field label="שיוך"><select className="input" name="project_id" defaultValue={editing.project_id ?? ''}><option value="">סוכן כללי במרחב</option>{wsProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
@@ -60,7 +60,7 @@ export default function Agents() {
             <Field label="מגבלת צעדים"><input className="input ltr" type="number" name="max_steps" defaultValue={editing.limits?.max_steps ?? 10} /></Field>
             <Field label="מגבלת זמן (שניות)"><input className="input ltr" type="number" name="max_seconds" defaultValue={editing.limits?.max_seconds ?? 120} /></Field>
             <Field label="מגבלת טוקנים"><input className="input ltr" type="number" name="max_tokens" defaultValue={editing.limits?.max_tokens ?? 20000} /></Field>
-            <Field label="תקרת עלות לריצה ($)"><input className="input ltr" type="number" step="0.01" name="max_cost_usd" defaultValue={editing.limits?.max_cost_usd ?? 1} /></Field>
+            <Field label="תקרת עלות לריצה ($)"><input className="input ltr" type="number" min={0} step="0.01" name="max_cost_usd" defaultValue={editing.limits?.max_cost_usd ?? 1} /></Field>
             <label className="flex items-end gap-2 pb-2 text-sm"><input type="checkbox" name="enabled" defaultChecked={editing.enabled ?? true} /> פעיל</label>
             <div className="md:col-span-3 text-xs text-slate-500">פעולה שמשנה מערכת חיצונית דורשת יכולת ייעודית ואישור של הפעולה והיעד. המודל אינו יכול להרחיב את היקף ההרשאה. שמירה יוצרת גרסת הגדרה.</div>
             <div className="md:col-span-3"><button className="btn-primary">שמירה</button></div>

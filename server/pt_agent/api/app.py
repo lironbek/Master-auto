@@ -16,11 +16,12 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from ..evidence import EvidenceVault, RedactionError
+from ..evidence import EvidenceVault, RedactionError, assert_clean, redact
 from ..findings.finding import _TRANSITIONS
 from ..models import (
     AuditEvent,
     Authorization,
+    Confidence,
     Evidence,
     EvidenceKind,
     Finding,
@@ -34,6 +35,7 @@ from ..models import (
     ScanRun,
     ScopeVersion,
     ScopeVersionStatus,
+    Severity,
     TargetSpec,
 )
 from ..reports import render_json, render_markdown
@@ -103,6 +105,32 @@ def _audit(org: str, actor: str, action: str, *, run_id: str | None = None,
 
 def _org_key() -> bytes | None:
     return os.environ.get("PT_ORG_HMAC_KEY", "").encode() or None
+
+
+def _clean_text(value: str, *, field: str) -> str:
+    """Free text written by a person goes through the same redaction gate as
+    evidence: secrets are masked, and if masking cannot be completed the
+    request is refused (PRD section 10, fail closed)."""
+    try:
+        out = redact(value or "", org_key=_org_key()).text
+        assert_clean(out)
+        return out
+    except RedactionError as exc:
+        raise HTTPException(status_code=422, detail=f"{field}: redaction failed; not stored ({exc})")
+
+
+def _within_run_window(scope: dict) -> bool:
+    start, end = scope.get("run_window_start"), scope.get("run_window_end")
+    t = _now()
+
+    def _dt(v):
+        if not v:
+            return None
+        d = v if isinstance(v, datetime) else datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+        return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+
+    s, e = _dt(start), _dt(end)
+    return (s is None or s <= t) and (e is None or t <= e)
 
 
 # --- Projects ---------------------------------------------------------------
@@ -241,6 +269,8 @@ def create_run(body: StartRun, p: Principal = Depends(require_role(*TESTER_ROLES
     auth = Authorization(**_get_or_404("authorizations", scope["authorization_id"], org))
     if not auth.is_valid_at():
         raise HTTPException(status_code=409, detail="authorization not valid now")
+    if not _within_run_window(scope):
+        raise HTTPException(status_code=409, detail="outside the approved run window")
     if body.mode is not OperatingMode.PASSIVE:
         raise HTTPException(status_code=409, detail="only passive runs are enabled in this build")
     run = ScanRun(organization_id=org, project_id=scope["project_id"],
@@ -260,6 +290,10 @@ def start_run(run_id: str, p: Principal = Depends(require_role(*TESTER_ROLES))):
     run, scope, auth = _load_run_context(row, org)
     if scope.status is not ScopeVersionStatus.APPROVED:
         raise HTTPException(status_code=409, detail="scope version no longer approved")
+    if not auth.is_valid_at():
+        raise HTTPException(status_code=409, detail="authorization not valid now")
+    if not _within_run_window(scope.model_dump()):
+        raise HTTPException(status_code=409, detail="outside the approved run window")
     get_store().update("scan_runs", run_id, organization_id=org, patch={
         "status": RunStatus.RUNNING.value, "started_at": _now().isoformat()})
     run.status = RunStatus.RUNNING
@@ -323,12 +357,44 @@ def list_findings(project_id: Optional[str] = None, run_id: Optional[str] = None
     return get_store().list("findings", organization_id=p.organization_id, **f)
 
 
+class CreateFinding(BaseModel):
+    """What a tester may submit. Identity, project, organisation and status are
+    derived server-side; free text passes the redaction gate."""
+    run_id: str
+    title: str = Field(min_length=1, max_length=200)
+    asset_path: str = ""
+    category: str = ""
+    severity: Severity = Severity.MEDIUM
+    confidence: Confidence = Confidence.SUSPECTED
+    preconditions: str = ""
+    evidence_ids: list[str] = Field(default_factory=list)
+    expected_result: str = ""
+    actual_result: str = ""
+    proven_impact: str = ""
+    inferred_impact: str = ""
+    reproduction: str = ""
+    remediation: str = ""
+    limitations: str = ""
+    owner: str = ""
+
+
+_FINDING_TEXT = ("title", "asset_path", "preconditions", "expected_result", "actual_result",
+                 "proven_impact", "inferred_impact", "reproduction", "remediation", "limitations")
+
+
 @app.post("/findings")
-def create_finding(finding: Finding, p: Principal = Depends(require_role(*TESTER_ROLES))):
+def create_finding(body: CreateFinding, p: Principal = Depends(require_role(*TESTER_ROLES))):
     org = p.organization_id
-    finding.organization_id = org
-    _get_or_404("scan_runs", finding.run_id, org)
-    get_store().insert("findings", _dump(finding))
+    run = _get_or_404("scan_runs", body.run_id, org)
+    store = get_store()
+    for eid in body.evidence_ids:
+        if store.get("evidence", eid, organization_id=org) is None:
+            raise HTTPException(status_code=422, detail=f"evidence {eid} not found")
+    data = body.model_dump()
+    for k in _FINDING_TEXT:
+        data[k] = _clean_text(data[k], field=k)
+    finding = Finding(organization_id=org, project_id=run["project_id"], status=FindingStatus.NEW, **data)
+    store.insert("findings", _dump(finding))
     _audit(org, p.actor, "finding.create", run_id=finding.run_id, detail=finding.id)
     return finding
 
@@ -358,9 +424,10 @@ def change_finding_status(finding_id: str, body: FindingStatusChange,
     current = FindingStatus(finding["status"])
     if body.status not in _TRANSITIONS.get(current, set()):
         raise HTTPException(status_code=409, detail=f"{current.value} -> {body.status.value} not allowed")
+    note = _clean_text(body.note, field="note")   # the audit log is append-only: never a raw secret
     row = get_store().update("findings", finding_id, organization_id=org, patch={"status": body.status.value})
     _audit(org, p.actor, "finding.status", run_id=finding.get("run_id"),
-           decision=body.status.value, detail=f"{finding_id} {body.note}"[:300])
+           decision=body.status.value, detail=f"{finding_id} {note}"[:300])
     return row
 
 
@@ -424,7 +491,11 @@ def create_report(body: CreateReport, p: Principal = Depends(require_role(*TESTE
             row = store.get("evidence", eid, organization_id=org)
             if row:
                 view._items[eid] = Evidence(**row)
-    content = render_json(run, findings) if body.fmt == "json" else render_markdown(run, findings, view, organization_id=org)
+    try:
+        content = render_json(run, findings) if body.fmt == "json" else render_markdown(run, findings, view, organization_id=org)
+    except RedactionError as exc:
+        _audit(org, p.actor, "report.refused", run_id=run.id, decision="blocked", detail=str(exc)[:300])
+        raise HTTPException(status_code=422, detail="report refused: unredacted secret in findings or evidence")
     rv = ReportVersion(organization_id=org, project_id=run.project_id, run_id=run.id,
                        finding_ids=[f.id for f in findings],
                        evidence_ids=sorted({e for f in findings for e in f.evidence_ids}))

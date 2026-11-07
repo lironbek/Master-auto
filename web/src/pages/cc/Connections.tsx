@@ -21,7 +21,7 @@ export default function Connections() {
   const [token, setToken] = useState<{ ws: Workspace; token: string } | null>(null)
 
   const load = () => api.get<Connection[]>(`/cc/connections${qs}`).then(setItems).catch(setError)
-  useEffect(() => { if (!loading && workspaces.length) { load(); api.get<Record<string, ProviderInfo>>('/cc/providers').then(setProviders) } }, [qs, loading, workspaces.length])
+  useEffect(() => { if (!loading && workspaces.length) { load(); api.get<Record<string, ProviderInfo>>('/cc/providers').then(setProviders).catch(setError) } }, [qs, loading, workspaces.length])
 
   async function create(e: FormEvent) {
     e.preventDefault(); setError(null)
@@ -70,7 +70,7 @@ export default function Connections() {
                 <td className="px-3 py-2 font-medium">{t(provider, c.provider)}</td>
                 <td className="px-3 py-2 text-sm">{c.account_label} <span className="mono text-xs text-slate-400">{c.secret_masked}</span></td>
                 <td className="px-3 py-2 text-xs">{c.coverage ? Object.entries(c.coverage).map(([k, v]) => `${k}: ${t(coverage, v)}`).join(' · ') : (c.capabilities?.join(' · ') || '—')}{c.notes?.length ? <div className="text-amber-700">{c.notes.join(' ')}</div> : null}</td>
-                <td className="px-3 py-2"><ConnPill value={c.status} />{c.freshness?.stale && ['ok', 'partial'].includes(c.status) && <span className="badge mr-1 bg-amber-100 text-amber-800">לא עדכני</span>}{c.last_error && <div className="mt-1 max-w-xs truncate text-xs text-rose-700" title={c.last_error}>{c.last_error}</div>}</td>
+                <td className="px-3 py-2"><ConnPill value={c.status} />{c.freshness?.stale && ['ok', 'partial', 'error'].includes(c.status) && <span className="badge mr-1 bg-amber-100 text-amber-800">לא עדכני</span>}{c.last_error && <div className="mt-1 max-w-xs truncate text-xs text-rose-700" title={c.last_error}>{c.last_error}</div>}</td>
                 <td className="px-3 py-2 text-xs">{fmtDate(c.last_sync_at) || 'טרם'}</td>
                 <td className="px-3 py-2 text-xs">{fmtDate(c.last_attempt_at) || '—'}</td>
                 <td className="px-3 py-2"><div className="flex gap-1"><button className="btn-secondary" onClick={() => sync(c.id)} disabled={busy === c.id || c.status === 'disconnected'}><RefreshCw className={`h-4 w-4 ${busy === c.id ? 'animate-spin' : ''}`} /> סנכרן</button><button className="btn-secondary" onClick={() => disconnect(c.id)} disabled={c.status === 'disconnected'}>נתק</button></div></td>

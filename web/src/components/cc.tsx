@@ -12,7 +12,7 @@ export function ResultPill({ value }: { value: string }) { return <span classNam
 const envTone: Record<string, string> = { production: 'bg-violet-100 text-violet-800', preview: 'bg-sky-100 text-sky-800', development: 'bg-slate-100 text-slate-700', test: 'bg-amber-100 text-amber-800', unclassified: 'bg-slate-100 text-slate-500' }
 export function EnvPill({ value }: { value: string }) { return <span className={`badge ${envTone[value] ?? 'bg-slate-100'}`}>{t(environment, value)}</span> }
 
-const connTone: Record<string, string> = { ok: 'bg-emerald-100 text-emerald-800', partial: 'bg-amber-100 text-amber-800', rate_limited: 'bg-amber-100 text-amber-800', reauth: 'bg-rose-100 text-rose-800', disconnected: 'bg-slate-200 text-slate-600', new: 'bg-indigo-100 text-indigo-800' }
+const connTone: Record<string, string> = { ok: 'bg-emerald-100 text-emerald-800', partial: 'bg-amber-100 text-amber-800', rate_limited: 'bg-amber-100 text-amber-800', reauth: 'bg-rose-100 text-rose-800', disconnected: 'bg-slate-200 text-slate-600', new: 'bg-indigo-100 text-indigo-800', error: 'bg-amber-100 text-amber-800' }
 export function ConnPill({ value }: { value: string }) { return <span className={`badge ${connTone[value] ?? 'bg-slate-100'}`}>{t(connStatus, value)}</span> }
 
 export function TonePill({ tone, children }: { tone?: string; children: ReactNode }) {
@@ -39,15 +39,24 @@ export function ExtLink({ href, children }: { href: string; children?: ReactNode
   return <a href={href} target="_blank" rel="noopener noreferrer" className="btn-secondary">{children ?? 'פתח במקור'} ↗</a>
 }
 
-/** Shown when the organisation has no workspace yet (first run). */
+/** Shown when the organisation has no workspace yet (first run). If the
+ * workspace list could not be loaded at all, the error is shown instead. */
 export function FirstWorkspace() {
-  const { reload, setCurrent } = useWorkspace()
+  const { reload, setCurrent, error: loadError } = useWorkspace()
   const [name, setName] = useState('')
   const [kind, setKind] = useState('personal')
   const [error, setError] = useState<unknown>(null)
   async function create(e: FormEvent) {
     e.preventDefault()
     try { const ws = await api.post<{ id: string }>('/cc/workspaces', { name, kind }); await reload(); setCurrent(ws.id) } catch (err) { setError(err) }
+  }
+  if (loadError) {
+    return (
+      <Card title="לא ניתן לטעון את המרחבים">
+        <ErrorBox error={loadError} />
+        <button className="btn-secondary mt-3" onClick={() => reload()}>נסה שוב</button>
+      </Card>
+    )
   }
   return (
     <Card title="ברוך הבא. נתחיל ממרחב עבודה">

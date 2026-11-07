@@ -8,6 +8,7 @@ from typing import Any, Optional
 from .base import AssetRecord, EventRecord, SyncResult, classify_http_error, make_client
 
 API = "https://api.vercel.com"
+MAX_PAGES = 10
 
 
 def _ms(ts: Any) -> str:
@@ -44,10 +45,21 @@ class VercelConnector:
     def sync(self, *, since: Optional[datetime] = None) -> SyncResult:
         res = SyncResult(coverage={"inventory": "full", "deployments": "full"})
         with self._client() as c:
-            r = c.get(f"{API}/v9/projects", params=self._q({"limit": 100}))
-            if r.status_code >= 400:
-                raise classify_http_error(r)
-            for p in r.json().get("projects", []):
+            projects: list[dict] = []
+            until: Any = None
+            for _ in range(MAX_PAGES):
+                r = c.get(f"{API}/v9/projects", params=self._q({"limit": 100, **({"until": until} if until else {})}))
+                if r.status_code >= 400:
+                    raise classify_http_error(r)
+                body = r.json()
+                projects.extend(body.get("projects", []))
+                until = (body.get("pagination") or {}).get("next")
+                if not until:
+                    break
+            else:
+                res.coverage["inventory"] = "partial"; res.partial = True
+                res.notes.append(f"inventory truncated after {MAX_PAGES * 100} projects")
+            for p in projects:
                 link = p.get("link") or {}
                 repo = f"{link.get('org', '')}/{link.get('repo', '')}" if link.get("repo") else ""
                 res.assets.append(AssetRecord(

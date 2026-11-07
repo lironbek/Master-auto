@@ -22,6 +22,7 @@ class Store(Protocol):
     def update(self, table: str, row_id: str, *, organization_id: str, patch: Row) -> Optional[Row]: ...
     def list(self, table: str, *, organization_id: str, **filters: Any) -> list[Row]: ...
     def find_one(self, table: str, **filters: Any) -> Optional[Row]: ...
+    def list_organization_ids(self) -> list[str]: ...
 
 
 class MemoryStore:
@@ -74,6 +75,10 @@ class MemoryStore:
             if all(row.get(k) == v for k, v in filters.items()):
                 return dict(row)
         return None
+
+    def list_organization_ids(self) -> list[str]:
+        """Every organisation id (scheduler / unauthenticated reporter lookups)."""
+        return [r["id"] for r in self._t("organizations").values()]
 
 
 _store: Optional[Store] = None

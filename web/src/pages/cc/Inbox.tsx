@@ -24,7 +24,7 @@ export default function InboxPage() {
       if (action === 'assign') body.project_id = choice[item.id] || item.suggested_project_id || undefined
       if (action === 'create_project') body.project_name = newName[item.id]
       const r = await api.post<{ ok: boolean; project_id?: string }>(`/cc/inbox/${item.id}`, body)
-      setNote(action === 'dismiss' ? 'ההצעה נדחתה.' : `הנכס שויך${r.project_id ? ` לפרויקט ${projects.find(p => p.id === r.project_id)?.name ?? newName[item.id] ?? ''}` : ''}.`)
+      setNote(action === 'dismiss' ? 'ההצעה נדחתה.' : action === 'mark_shared' ? 'הנכס סומן כמשותף (ללא שיוך לפרויקט).' : `הנכס שויך${r.project_id ? ` לפרויקט ${projects.find(p => p.id === r.project_id)?.name ?? newName[item.id] ?? ''}` : ''}.`)
       load()
     } catch (err) { setError(err) }
   }

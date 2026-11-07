@@ -23,13 +23,17 @@ export default function CcProject() {
   if (error && !d) return <ErrorBox error={error} />
   if (!d) return <Spinner />
   const p = d.project
-  const prodFail = d.events.find(e => e.result === 'failure' && e.environment === 'production')
+  // Production state follows the newest production event (events are newest
+  // first): an old failure must not outlive a later successful deploy.
+  const latestProd = d.events.find(e => e.environment === 'production')
+  const prodFail = latestProd && latestProd.result === 'failure' ? latestProd : undefined
   const lastProd = d.events.find(e => e.environment === 'production' && e.kind === 'deployment')
 
   async function save(e: FormEvent) {
     e.preventDefault()
     const fd = new FormData(e.target as HTMLFormElement)
-    try { await api.patch(`/cc/projects/${id}`, { name: fd.get('name'), description: fd.get('description'), owner: fd.get('owner'), importance: fd.get('importance'), environment: fd.get('environment'), budget_usd: Number(fd.get('budget_usd')), default_key_id: fd.get('default_key_id') || null }); setEdit(false); load() } catch (err) { setError(err) }
+    // default_key_id: "" clears the key (null would mean "no change" to the server)
+    try { await api.patch(`/cc/projects/${id}`, { name: fd.get('name'), description: fd.get('description'), owner: fd.get('owner'), importance: fd.get('importance'), environment: fd.get('environment'), status: fd.get('status'), budget_usd: Number(fd.get('budget_usd')), default_key_id: String(fd.get('default_key_id') ?? '') }); setEdit(false); load() } catch (err) { setError(err) }
   }
   async function assign(assetId: string) { try { await api.post(`/cc/projects/${id}/assets`, { asset_id: assetId }); load() } catch (err) { setError(err) } }
   async function unassign(assetId: string) { try { await api.del(`/cc/projects/${id}/assets/${assetId}`); load() } catch (err) { setError(err) } }
@@ -55,7 +59,7 @@ export default function CcProject() {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <Link to="/projects" className="text-xs text-indigo-600">← לכל הפרויקטים</Link>
-          <h1 className="flex items-center gap-3 text-xl font-bold">{p.name} <TonePill tone={prodFail ? 'bad' : 'ok'}>{prodFail ? 'כשל בייצור' : 'ייצור תקין'}</TonePill></h1>
+          <h1 className="flex items-center gap-3 text-xl font-bold">{p.name} <TonePill tone={prodFail ? 'bad' : 'ok'}>{prodFail ? 'כשל בייצור' : 'ייצור תקין'}</TonePill>{p.status === 'archived' && <span className="badge bg-slate-200 text-slate-600">בארכיון</span>}</h1>
           <p className="text-sm text-slate-500">{p.description || <Mono>{p.id}</Mono>}</p>
         </div>
         <button className="btn-secondary" onClick={() => setEdit(v => !v)}>עריכה</button>
@@ -69,7 +73,8 @@ export default function CcProject() {
             <Field label="תיאור"><input className="input" name="description" defaultValue={p.description} /></Field>
             <Field label="חשיבות"><select className="input" name="importance" defaultValue={p.importance}>{Object.entries(importance).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             <Field label="סביבה"><select className="input" name="environment" defaultValue={p.environment}>{Object.entries(environment).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-            <Field label="תקציב חודשי ($)"><input className="input ltr" type="number" name="budget_usd" defaultValue={p.budget_usd ?? 0} /></Field>
+            <Field label="תקציב חודשי ($)"><input className="input ltr" type="number" min={0} step="0.01" name="budget_usd" defaultValue={p.budget_usd ?? 0} /></Field>
+            <Field label="סטטוס"><select className="input" name="status" defaultValue={p.status}><option value="active">פעיל</option><option value="archived">ארכיון</option></select></Field>
             <Field label="מפתח AI ברירת מחדל"><select className="input" name="default_key_id" defaultValue={p.default_key_id ?? ''}><option value="">ללא</option>{d.keys.map(k => <option key={k.id} value={k.id}>{k.name} · {k.masked}</option>)}</select></Field>
             <div className="md:col-span-3 text-xs text-slate-500">שינוי מרחב מתבצע דרך אשף העברה נפרד. סודות והרשאות לא עוברים עם השיוך.</div>
             <div className="md:col-span-3"><button className="btn-primary">שמירה</button></div>

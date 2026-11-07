@@ -31,7 +31,7 @@ export default function CcProjects() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-xl font-bold">פרויקטים</h1><p className="text-sm text-slate-500">שם, בעלים, סביבה, חיבורים, חריגה אחרונה וסשן אחרון</p></div>
+        <div><h1 className="text-xl font-bold">פרויקטים</h1><p className="text-sm text-slate-500">שם, בעלים, סביבה, חיבורים, חריגה אחרונה וסשן אחרון. ארכוב נעשה מעמוד הפרויקט (עריכה → סטטוס).</p></div>
         <button className="btn-primary" onClick={() => setOpen(v => !v)}><Plus className="h-4 w-4" /> פרויקט חדש</button>
       </div>
       <ErrorBox error={error} />
@@ -55,7 +55,7 @@ export default function CcProjects() {
           <Table head={['פרויקט', 'בעלים', 'סביבה', 'חשיבות', 'נכסים', 'מצב', 'סשן אחרון']}>
             {items.filter(p => archived || p.status === 'active').map(p => (
               <tr key={p.id}>
-                <td className="px-3 py-2"><Link to={`/projects/${p.id}`} className="font-medium text-indigo-700">{p.name}</Link><div className="text-xs text-slate-500">{p.description}</div></td>
+                <td className="px-3 py-2"><Link to={`/projects/${p.id}`} className="font-medium text-indigo-700">{p.name}</Link>{p.status === 'archived' && <span className="badge mr-2 bg-slate-200 text-slate-600">ארכיון</span>}<div className="text-xs text-slate-500">{p.description}</div></td>
                 <td className="px-3 py-2 text-sm">{p.owner || '—'}</td>
                 <td className="px-3 py-2 text-xs">{t(environment, p.environment)}</td>
                 <td className="px-3 py-2 text-xs">{t(importance, p.importance)}</td>

@@ -10,18 +10,19 @@ export default function Dashboard() {
 
   useEffect(() => {
     let alive = true
-    const load = () => api.get<DashboardData>('/pt/dashboard').then(d => alive && setData(d)).catch(setError)
+    const load = () => api.get<DashboardData>('/pt/dashboard').then(d => { if (alive) { setData(d); setError(null) } }).catch(err => alive && setError(err))
     load()
     const id = setInterval(load, 10_000)
     return () => { alive = false; clearInterval(id) }
   }, [])
 
-  if (error) return <ErrorBox error={error} />
+  if (error && !data) return <ErrorBox error={error} />
   if (!data) return <Spinner />
 
   const sev = data.findings.by_severity
   return (
     <div className="space-y-6">
+      <ErrorBox error={error} />
       <div className="flex items-end justify-between">
         <div>
           <h1 className="text-xl font-bold">לוח בקרה</h1>

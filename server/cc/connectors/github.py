@@ -8,6 +8,7 @@ from typing import Any, Optional
 from .base import AssetRecord, ConnectorError, EventRecord, SyncResult, classify_http_error, make_client
 
 API = "https://api.github.com"
+MAX_PAGES = 10   # 1,000 repositories per connection; beyond that the sync is marked partial
 
 
 class GitHubConnector:
@@ -31,27 +32,41 @@ class GitHubConnector:
             scopes = r.headers.get("x-oauth-scopes", "")
             return {"account": me.get("login", ""), "scopes": scopes, "capabilities": ["inventory", "pull_requests", "actions"]}
 
-    def _list_repos(self, c) -> list[dict]:
+    def _list_repos(self, c, res: SyncResult) -> list[dict]:
         if self.repos:
             out = []
             for full in self.repos:
                 r = c.get(f"{API}/repos/{full}")
                 if r.status_code == 404:
+                    # An allow-listed repo the token cannot see is a coverage gap,
+                    # not evidence that the repo disappeared.
+                    res.coverage["inventory"] = "partial"; res.partial = True
+                    res.notes.append(f"{full}: not visible to this token")
                     continue
                 if r.status_code >= 400:
                     raise classify_http_error(r)
                 out.append(r.json())
             return out
-        url = f"{API}/orgs/{self.org}/repos?per_page=100&sort=pushed" if self.org else f"{API}/user/repos?per_page=100&sort=pushed&affiliation=owner,collaborator,organization_member"
-        r = c.get(url)
-        if r.status_code >= 400:
-            raise classify_http_error(r)
-        return r.json()
+        base = f"{API}/orgs/{self.org}/repos?per_page=100&sort=pushed" if self.org else f"{API}/user/repos?per_page=100&sort=pushed&affiliation=owner,collaborator,organization_member"
+        out: list[dict] = []
+        for page in range(1, MAX_PAGES + 1):
+            r = c.get(f"{base}&page={page}")
+            if r.status_code >= 400:
+                raise classify_http_error(r)
+            batch = r.json()
+            out.extend(batch)
+            if len(batch) < 100:
+                return out
+        # More pages than we are willing to walk: the inventory is incomplete,
+        # so the disappearance pass must not run.
+        res.coverage["inventory"] = "partial"; res.partial = True
+        res.notes.append(f"inventory truncated after {MAX_PAGES * 100} repositories")
+        return out
 
     def sync(self, *, since: Optional[datetime] = None) -> SyncResult:
         res = SyncResult(coverage={"inventory": "full", "pull_requests": "full", "actions": "full"})
         with self._client() as c:
-            for repo in self._list_repos(c):
+            for repo in self._list_repos(c, res):
                 full = repo["full_name"]
                 res.assets.append(AssetRecord(
                     external_id=str(repo["id"]), kind="repo", name=full, environment="development",

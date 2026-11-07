@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import os
 from datetime import timedelta
 from typing import Any, Optional
@@ -15,12 +17,14 @@ from pt_agent.storage import get_store
 
 from . import agents as agent_engine
 from . import sync as sync_engine
-from .connectors import PROVIDERS, ConnectorError, build
+from .connectors import PROVIDERS, ConfigError, ConnectorError, build, validate_config
 from .secrets import SecretsUnavailable, encrypt, mask
 from .service import (
     WS_ADMIN,
     WS_EDITOR,
     WS_VIEWER,
+    active_links,
+    assignment_index,
     audit,
     get_in_workspace,
     iso,
@@ -28,9 +32,26 @@ from .service import (
     new_id,
     now,
     parse_dt,
+    public,
     require_workspace,
     visible_workspace_ids,
 )
+
+# Connection statuses the scheduler keeps retrying. 'error' is a transient
+# provider/network failure; 'disconnected' is only ever set by a user.
+RETRYABLE = ("ok", "partial", "new", "rate_limited", "error")
+
+
+def _month(c: Row) -> str:
+    """Billing month of a cost entry; entries logged without a period count in
+    the month they were recorded."""
+    return str(c.get("period_start") or c.get("created_at") or "")[:7]
+
+
+def _latest_production(events: list[Row]) -> Optional[Row]:
+    """Newest production event (events are newest-first). A project is 'failing
+    in production' only while its latest production event is a failure."""
+    return next((e for e in events if e.get("environment") == "production"), None)
 
 router = APIRouter(prefix="/cc", tags=["control-center"])
 Row = dict[str, Any]
@@ -50,7 +71,7 @@ class WorkspaceIn(BaseModel):
 @router.get("/workspaces")
 def list_workspaces(p: Principal = Depends(current_principal)):
     ids = visible_workspace_ids(p)
-    return [w for w in _store().list("workspaces", organization_id=p.organization_id) if w["id"] in ids]
+    return [public(w) for w in _store().list("workspaces", organization_id=p.organization_id) if w["id"] in ids]
 
 
 @router.post("/workspaces")
@@ -115,19 +136,24 @@ def overview(workspace_id: Optional[str] = None, p: Principal = Depends(current_
     by_kind: dict[str, int] = {}
     for a in assets:
         by_kind[a["kind"]] = by_kind.get(a["kind"], 0) + 1
-    assigned = {pa["asset_id"] for pa in store.list("project_assets", organization_id=org)}
+    links = active_links(store, org)
+    assigned = {pa["asset_id"] for pa in links}
+    link_count: dict[str, int] = {}
+    for pa in links:
+        link_count[pa["project_id"]] = link_count.get(pa["project_id"], 0) + 1
     pid_name = {x["id"]: x["name"] for x in projects}
 
     def project_state(pr: Row) -> dict:
         pev = [e for e in events if e.get("project_id") == pr["id"]]
-        prod_fail = next((e for e in pev if e["result"] == "failure" and e["environment"] == "production"), None)
+        last_prod = _latest_production(pev)
+        prod_fail = last_prod if last_prod and last_prod["result"] == "failure" else None
         last_sess = next((s for s in sorted(sessions, key=lambda s: str(s.get("started_at")), reverse=True) if s["project_id"] == pr["id"]), None)
         tone = "bad" if prod_fail else ("warn" if any(e["result"] == "failure" for e in pev[:10]) else "ok")
         return {**pr, "tone": tone, "last_failure": prod_fail or next((e for e in pev if e["result"] == "failure"), None),
-                "last_session": last_sess, "asset_count": sum(1 for pa in store.list("project_assets", organization_id=org, project_id=pr["id"]))}
+                "last_session": last_sess, "asset_count": link_count.get(pr["id"], 0)}
 
     return {
-        "projects": [project_state(x) for x in projects if x["status"] == "active"],
+        "projects": [project_state(x) for x in projects],
         "assets_by_kind": by_kind, "assets_total": len(assets), "unassigned": sum(1 for a in assets if a["id"] not in assigned),
         "open_sessions": [s for s in sessions if s["status"] == "open"][-10:],
         "critical_alerts": alerts[-20:],
@@ -146,7 +172,7 @@ class ProjectIn(BaseModel):
     owner: str = ""
     importance: str = "normal"
     environment: str = "unclassified"
-    budget_usd: float = 0
+    budget_usd: float = Field(default=0, ge=0, allow_inf_nan=False)
 
 
 class ProjectPatch(BaseModel):
@@ -156,8 +182,8 @@ class ProjectPatch(BaseModel):
     importance: Optional[str] = None
     status: Optional[str] = None
     environment: Optional[str] = None
-    budget_usd: Optional[float] = None
-    default_key_id: Optional[str] = None
+    budget_usd: Optional[float] = Field(default=None, ge=0, allow_inf_nan=False)
+    default_key_id: Optional[str] = None     # "" clears the default key
 
 
 @router.get("/projects")
@@ -178,7 +204,7 @@ def create_project(body: ProjectIn, p: Principal = Depends(current_principal)):
 def get_project(project_id: str, p: Principal = Depends(current_principal)):
     store, org = _store(), p.organization_id
     pr = get_in_workspace(p, "cc_projects", project_id)
-    links = store.list("project_assets", organization_id=org, project_id=project_id)
+    links = active_links(store, org, project_id=project_id)
     assets = [{**a, "link_source": l["source"]} for l in links for a in [store.get("cc_assets", l["asset_id"], organization_id=org)] if a]
     events = sorted(store.list("activity_events", organization_id=org, workspace_id=pr["workspace_id"], project_id=project_id),
                     key=lambda e: str(e.get("occurred_at")), reverse=True)[:50]
@@ -187,10 +213,10 @@ def get_project(project_id: str, p: Principal = Depends(current_principal)):
     agents = [a for a in store.list("cc_agents", organization_id=org, workspace_id=pr["workspace_id"])
               if a.get("project_id") in (None, "", project_id)]
     runs = store.list("agent_runs", organization_id=org, workspace_id=pr["workspace_id"], project_id=project_id)
-    conns = {c["id"]: {k: v for k, v in c.items() if k != "secret_enc"} for c in store.list("connections", organization_id=org, workspace_id=pr["workspace_id"])}
-    keys = [{k: v for k, v in k_.items() if k != "secret_enc"} for k_ in store.list("provider_keys", organization_id=org, workspace_id=pr["workspace_id"])]
+    conns = {c["id"]: public(c) for c in store.list("connections", organization_id=org, workspace_id=pr["workspace_id"])}
+    keys = [public(k_) for k_ in store.list("provider_keys", organization_id=org, workspace_id=pr["workspace_id"])]
     pt_projects = [x for x in store.list("projects", organization_id=org) if x.get("cc_project_id") == project_id]
-    month_cost = sum(float(c.get("amount") or 0) for c in costs if str(c.get("period_start") or "")[:7] == now().strftime("%Y-%m"))
+    month_cost = sum(float(c.get("amount") or 0) for c in costs if _month(c) == now().strftime("%Y-%m"))
     return {"project": pr, "assets": assets, "events": events, "sessions": sessions, "costs": costs,
             "cost_month_usd": round(month_cost, 2), "agents": agents, "runs": runs,
             "connections": [conns[a["connection_id"]] for a in assets if a.get("connection_id") in conns and conns] if conns else [],
@@ -201,6 +227,8 @@ def get_project(project_id: str, p: Principal = Depends(current_principal)):
 def patch_project(project_id: str, body: ProjectPatch, p: Principal = Depends(current_principal)):
     pr = get_in_workspace(p, "cc_projects", project_id, minimum=WS_EDITOR)
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "status" in patch and patch["status"] not in ("active", "archived"):
+        raise HTTPException(status_code=422, detail="status must be active|archived")
     if "default_key_id" in patch and patch["default_key_id"]:
         k = _store().get("provider_keys", patch["default_key_id"], organization_id=p.organization_id)
         if not k or k["workspace_id"] != pr["workspace_id"]:
@@ -225,9 +253,21 @@ def assign_asset(project_id: str, body: AssignIn, p: Principal = Depends(current
     if not existing:
         store.insert("project_assets", {"id": new_id("pa"), "organization_id": org, "project_id": project_id,
                                         "asset_id": body.asset_id, "source": "manual", "created_at": iso()})
-    for e in store.list("activity_events", organization_id=org, workspace_id=pr["workspace_id"], asset_id=body.asset_id):
+    else:
+        # A link that was unassigned earlier is re-activated rather than duplicated
+        # (the DB key is unique on project + asset).
+        for l in existing:
+            if l.get("source") == "removed":
+                store.update("project_assets", l["id"], organization_id=org, patch={"source": "manual", "created_at": iso()})
+    events = store.list("activity_events", organization_id=org, workspace_id=pr["workspace_id"], asset_id=body.asset_id)
+    for e in events:
         if not e.get("project_id"):
             store.update("activity_events", e["id"], organization_id=org, patch={"project_id": project_id})
+    # The asset now has an owner: a current production failure becomes an alert.
+    latest = _latest_production(sorted(events, key=lambda e: str(e.get("occurred_at")), reverse=True))
+    if latest and latest.get("result") == "failure":
+        sync_engine._alert(store, org, pr["workspace_id"], "failure", "asset", body.asset_id,
+                           f"כשל בייצור: {latest.get('title', '')}"[:200], occurred_at=latest.get("occurred_at"))
     for i in store.list("inbox_items", organization_id=org, workspace_id=pr["workspace_id"], asset_id=body.asset_id, status="open"):
         store.update("inbox_items", i["id"], organization_id=org, patch={"status": "resolved", "resolved_project_id": project_id})
     audit(p, "cc.asset.assign", detail=f"{body.asset_id} -> {project_id}")
@@ -271,6 +311,10 @@ def create_connection(body: ConnectionIn, p: Principal = Depends(current_princip
     if body.provider not in PROVIDERS:
         raise HTTPException(status_code=422, detail="unknown provider")
     try:
+        validate_config(body.provider, body.config)
+    except ConfigError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    try:
         enc = encrypt(body.secret)
     except SecretsUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc))
@@ -288,7 +332,7 @@ def create_connection(body: ConnectionIn, p: Principal = Depends(current_princip
            "config": body.config, "capabilities": info.get("capabilities", []), "verify": {k: v for k, v in info.items() if k != "error"}}
     _store().insert("connections", row)
     audit(p, "cc.connection.create", detail=f"{row['id']} {body.provider} {status}")
-    return {k: v for k, v in row.items() if k != "secret_enc"}
+    return public(row)
 
 
 class ConnectionPatch(BaseModel):
@@ -304,6 +348,15 @@ def update_connection(conn_id: str, body: ConnectionPatch, p: Principal = Depend
     if body.account_label is not None:
         patch["account_label"] = body.account_label
     if body.config is not None:
+        try:
+            validate_config(c["provider"], body.config)
+        except ConfigError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+        old_target = (c.get("config") or {}).get("base_url", "")
+        if body.config.get("base_url", "") != old_target and not body.secret:
+            # The stored key would otherwise be sent to the new host on the next
+            # sync; changing the destination requires re-entering the secret.
+            raise HTTPException(status_code=422, detail="changing base_url requires re-entering the secret")
         patch["config"] = body.config
     if body.secret:
         try:
@@ -312,7 +365,7 @@ def update_connection(conn_id: str, body: ConnectionPatch, p: Principal = Depend
             raise HTTPException(status_code=503, detail=str(exc))
     row = _store().update("connections", conn_id, organization_id=p.organization_id, patch=patch)
     audit(p, "cc.connection.update", detail=f"{conn_id} {','.join(patch)}")
-    return {k: v for k, v in row.items() if k != "secret_enc"}
+    return public(row)
 
 
 @router.post("/connections/{conn_id}/sync")
@@ -329,40 +382,44 @@ def disconnect(conn_id: str, p: Principal = Depends(current_principal)):
     row = _store().update("connections", conn_id, organization_id=p.organization_id,
                           patch={"status": "disconnected", "secret_enc": "", "secret_masked": ""})
     audit(p, "cc.connection.disconnect", detail=conn_id)
-    return {k: v for k, v in row.items() if k != "secret_enc"}
+    return public(row)
 
 
 @router.get("/sync/all")
 def sync_all(authorization: Optional[str] = Header(default=None)):
     """Scheduled sync (Vercel cron). Protected by CRON_SECRET; no user context."""
     secret = os.environ.get("CRON_SECRET", "")
-    if not secret or authorization != f"Bearer {secret}":
+    if not secret or not hmac.compare_digest(authorization or "", f"Bearer {secret}"):
         raise HTTPException(status_code=401, detail="cron secret required")
     store = _store()
     out = []
-    for org in store.list("organizations", organization_id="") if False else _all_orgs(store):
+    for org in store.list_organization_ids():
         for ws in store.list("workspaces", organization_id=org):
             for c in store.list("connections", organization_id=org, workspace_id=ws["id"]):
-                if c["status"] in ("ok", "partial", "new", "rate_limited") and c.get("secret_enc"):
+                if c["status"] in RETRYABLE and c.get("secret_enc"):
                     out.append({"connection": c["id"], **sync_engine.run_connection_sync(store, org, c)})
             sync_engine.check_sync_delays(store, org, [ws["id"]])
     return {"synced": out}
 
 
-def _all_orgs(store) -> list[str]:
-    try:
-        rows = store._tables.get("organizations", {}).values()  # MemoryStore
-        return [r["id"] for r in rows]
-    except AttributeError:
-        pass
-    # SQL stores: organizations has no organization_id column; query ids via find_one is single-row,
-    # so use a lightweight list through the workspaces table instead.
-    try:
-        with store._c().cursor() as cur:  # PostgresStore
-            cur.execute("select distinct organization_id from workspaces")
-            return [r["organization_id"] for r in cur.fetchall()]
-    except AttributeError:
-        return []
+def _token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _workspace_by_token(store, workspace_id: str, token: str) -> Optional[Row]:
+    """Resolve the workspace an external reporter signs for. Only a hash of the
+    token is stored; the comparison is constant-time."""
+    if not token:
+        return None
+    for org in store.list_organization_ids():
+        for w in store.list("workspaces", organization_id=org):
+            if w["id"] != workspace_id:
+                continue
+            stored = w.get("report_token_hash") or ""
+            if stored and hmac.compare_digest(stored, _token_hash(token)):
+                return w
+            return None
+    return None
 
 
 # --- Assets & inbox (PRD sections 3, 4) ------------------------------------
@@ -372,9 +429,8 @@ def list_assets(workspace_id: Optional[str] = None, include_removed: bool = Fals
     store, org = _store(), p.organization_id
     rows = list_in_workspaces(p, "cc_assets", workspace_id)
     links: dict[str, list[str]] = {}
-    for pa in store.list("project_assets", organization_id=org):
-        if pa.get("source") != "removed":
-            links.setdefault(pa["asset_id"], []).append(pa["project_id"])
+    for pa in active_links(store, org):
+        links.setdefault(pa["asset_id"], []).append(pa["project_id"])
     out = []
     for a in rows:
         if a.get("removed_at") and not include_removed:
@@ -394,12 +450,12 @@ class AssetPatch(BaseModel):
 def get_asset(asset_id: str, p: Principal = Depends(current_principal)):
     store, org = _store(), p.organization_id
     a = get_in_workspace(p, "cc_assets", asset_id)
-    links = [l for l in store.list("project_assets", organization_id=org, asset_id=asset_id) if l.get("source") != "removed"]
+    links = active_links(store, org, asset_id=asset_id)
     events = sorted(store.list("activity_events", organization_id=org, workspace_id=a["workspace_id"], asset_id=asset_id),
                     key=lambda e: str(e.get("occurred_at")), reverse=True)[:30]
     conn = store.get("connections", a["connection_id"], organization_id=org) if a.get("connection_id") else None
     return {"asset": a, "projects": [store.get("cc_projects", l["project_id"], organization_id=org) for l in links],
-            "events": events, "connection": {k: v for k, v in (conn or {}).items() if k != "secret_enc"} or None}
+            "events": events, "connection": public(conn) if conn else None}
 
 
 @router.patch("/assets/{asset_id}")
@@ -576,12 +632,8 @@ def external_report(body: ReportIn, x_report_token: Optional[str] = Header(defau
     """Signed external report: token per workspace (data.report_token). Replays are
     recognised as duplicates via the unique external_id."""
     store = _store()
-    ws = None
-    for org in _all_orgs(store):
-        for w in store.list("workspaces", organization_id=org):
-            if w["id"] == body.workspace_id:
-                ws = w; break
-    if not ws or not x_report_token or ws.get("report_token") != x_report_token:
+    ws = _workspace_by_token(store, body.workspace_id, x_report_token or "")
+    if not ws:
         raise HTTPException(status_code=401, detail="invalid report token")
     org = ws["organization_id"]
     ext = f"service:{body.service}"
@@ -597,23 +649,27 @@ def external_report(body: ReportIn, x_report_token: Optional[str] = Header(defau
     dup = store.list("activity_events", organization_id=org, workspace_id=ws["id"], external_id=f"report:{body.external_id}")
     if dup:
         return {"ok": True, "duplicate": True, "event_id": dup[0]["id"]}
-    pid = next((pa["project_id"] for pa in store.list("project_assets", organization_id=org, asset_id=asset["id"]) if pa.get("source") != "removed"), None)
+    pid = next((pa["project_id"] for pa in active_links(store, org, asset_id=asset["id"])), None)
     ev = store.insert("activity_events", {"id": new_id("evt"), "organization_id": org, "workspace_id": ws["id"], "connection_id": None,
                                           "asset_id": asset["id"], "project_id": pid, "external_id": f"report:{body.external_id}",
                                           "kind": body.kind, "result": body.result, "environment": body.environment,
                                           "title": body.title or f"{body.service} {body.kind}", "url": body.url,
                                           "occurred_at": body.occurred_at or iso(), "ingested_at": iso(), "created_at": iso()})
     if body.result == "failure" and body.environment == "production" and pid:
-        sync_engine._alert(store, org, ws["id"], "failure", "asset", asset["id"], f"כשל בייצור: {ev['title']}"[:200])
+        sync_engine._alert(store, org, ws["id"], "failure", "asset", asset["id"], f"כשל בייצור: {ev['title']}"[:200],
+                           occurred_at=ev["occurred_at"])
     return {"ok": True, "duplicate": False, "event_id": ev["id"]}
 
 
 @router.post("/workspaces/{ws_id}/report-token")
 def rotate_report_token(ws_id: str, p: Principal = Depends(current_principal)):
+    """Issue a new reporter token. The plaintext is returned once; only its
+    hash is stored, so no later read of the workspace can reveal it."""
     require_workspace(p, ws_id, WS_ADMIN)
     import secrets as _s
     token = _s.token_urlsafe(24)
-    _store().update("workspaces", ws_id, organization_id=p.organization_id, patch={"report_token": token})
+    _store().update("workspaces", ws_id, organization_id=p.organization_id,
+                    patch={"report_token_hash": _token_hash(token), "report_token": None})
     audit(p, "cc.workspace.report_token", detail=ws_id)
     return {"workspace_id": ws_id, "report_token": token}
 
@@ -645,7 +701,7 @@ class CostIn(BaseModel):
     project_id: Optional[str] = None
     provider: str
     kind: str = "reported"            # reported | usage | estimate | allocation | subscription
-    amount: float
+    amount: float = Field(ge=0, allow_inf_nan=False)
     currency: str = "USD"
     period_start: Optional[str] = None
     period_end: Optional[str] = None
@@ -694,7 +750,7 @@ class KeyIn(BaseModel):
 @router.get("/keys")
 def list_keys(workspace_id: Optional[str] = None, p: Principal = Depends(current_principal)):
     store, org = _store(), p.organization_id
-    rows = [{k: v for k, v in r.items() if k != "secret_enc"} for r in list_in_workspaces(p, "provider_keys", workspace_id)]
+    rows = [public(r) for r in list_in_workspaces(p, "provider_keys", workspace_id)]
     for r in rows:
         r["used_by_projects"] = [x["name"] for x in store.list("cc_projects", organization_id=org, workspace_id=r["workspace_id"]) if x.get("default_key_id") == r["id"]]
         r["used_by_agents"] = [a["name"] for a in store.list("cc_agents", organization_id=org, workspace_id=r["workspace_id"]) if a.get("key_id") == r["id"]]
@@ -713,7 +769,7 @@ def create_key(body: KeyIn, p: Principal = Depends(current_principal)):
            "created_at": iso(), "secret_enc": enc, "version": 1}
     _store().insert("provider_keys", row)
     audit(p, "cc.key.create", detail=f"{row['id']} {body.provider}")
-    return {k: v for k, v in row.items() if k != "secret_enc"}
+    return public(row)
 
 
 class KeyRotate(BaseModel):
@@ -732,7 +788,7 @@ def rotate_key(key_id: str, body: KeyRotate, p: Principal = Depends(current_prin
         raise HTTPException(status_code=503, detail=str(exc))
     row = store.update("provider_keys", key_id, organization_id=org, patch={"secret_enc": enc, "masked": mask(body.secret), "version": int(k.get("version", 1)) + 1})
     audit(p, "cc.key.rotate", detail=f"{key_id} v{row['version']}")
-    return {**{kk: v for kk, v in row.items() if kk != "secret_enc"}, "affected": affected}
+    return {**public(row), "affected": affected}
 
 
 # --- Agents (PRD section 9.4) ------------------------------------------------
@@ -784,11 +840,19 @@ def update_agent(agent_id: str, body: AgentIn, p: Principal = Depends(current_pr
     a = get_in_workspace(p, "cc_agents", agent_id, minimum=WS_EDITOR)
     if body.workspace_id != a["workspace_id"]:
         raise HTTPException(status_code=422, detail="workspace change requires the transfer wizard")
+    # Project references must stay inside the agent's workspace (same rule as create).
+    for pid in [body.project_id] + list(body.allowed_projects):
+        if pid:
+            pr = _store().get("cc_projects", pid, organization_id=p.organization_id)
+            if not pr or pr["workspace_id"] != a["workspace_id"]:
+                raise HTTPException(status_code=422, detail="project not in workspace")
     if body.key_id:
         k = _store().get("provider_keys", body.key_id, organization_id=p.organization_id)
         if not k or k["workspace_id"] != a["workspace_id"]:
             raise HTTPException(status_code=422, detail="key must belong to the workspace")
     patch = {**body.model_dump(), "version": int(a.get("version", 1)) + 1}
+    if not body.owner:
+        patch["owner"] = a.get("owner", "")   # an edit never blanks the owner
     row = _store().update("cc_agents", agent_id, organization_id=p.organization_id, patch=patch)
     audit(p, "cc.agent.update", detail=f"{agent_id} v{row['version']}")
     return row
@@ -818,23 +882,40 @@ def run_agent(agent_id: str, body: RunIn, p: Principal = Depends(current_princip
         if s["project_id"] != pr["id"]:
             raise HTTPException(status_code=422, detail="session belongs to another project")
     # Idempotency (PRD 9.4.2): a double click never creates a second run.
-    if body.idempotency_key:
+    def _existing_run() -> Optional[Row]:
         for r in store.list("agent_runs", organization_id=org, workspace_id=a["workspace_id"], agent_id=agent_id):
             if r.get("idempotency_key") == body.idempotency_key:
                 return r
-    # Budget check including concurrent runs (PRD 9.4.2).
-    limit = float((a.get("limits") or {}).get("max_cost_usd") or 0)
+        return None
+
+    if body.idempotency_key and (prev := _existing_run()):
+        return prev
+    # Budget check including concurrent runs (PRD 9.4.2). Limits and amounts are
+    # clamped so a negative or NaN value can never make the check pass.
+    try:
+        limit = max(0.0, float((a.get("limits") or {}).get("max_cost_usd") or 0))
+    except (TypeError, ValueError):
+        limit = 0.0
+    if limit != limit:  # NaN
+        limit = 0.0
     budget = float(pr.get("budget_usd") or 0)
-    if budget:
-        spent = sum(float(c.get("amount") or 0) for c in store.list("cost_entries", organization_id=org, workspace_id=pr["workspace_id"], project_id=pr["id"])
-                    if str(c.get("period_start") or "")[:7] == now().strftime("%Y-%m"))
+    if budget > 0:
+        spent = sum(max(0.0, float(c.get("amount") or 0)) for c in store.list("cost_entries", organization_id=org, workspace_id=pr["workspace_id"], project_id=pr["id"])
+                    if _month(c) == now().strftime("%Y-%m"))
         running = store.list("agent_runs", organization_id=org, workspace_id=a["workspace_id"], project_id=pr["id"], status="running")
         if spent + limit * (len(running) + 1) > budget:
             raise HTTPException(status_code=409, detail="project budget would be exceeded")
     run = {"id": new_id("arun"), "organization_id": org, "workspace_id": a["workspace_id"], "agent_id": agent_id,
            "project_id": pr["id"], "session_id": body.session_id, "status": "queued", "created_at": iso(),
            "idempotency_key": body.idempotency_key, "requested_by": p.actor, "agent_name": a["name"]}
-    store.insert("agent_runs", run)
+    try:
+        store.insert("agent_runs", run)
+    except Exception as exc:
+        # Concurrent submission with the same key: the partial unique index
+        # (migration 0005) rejects the second insert; return the first run.
+        if body.idempotency_key and "unique" in str(exc).lower() and (prev := _existing_run()):
+            return prev
+        raise
     audit(p, "cc.agent.run", detail=f"{run['id']} agent={agent_id} project={pr['id']}", run_id=run["id"])
     final = agent_engine.execute_run(store, org, run, a, pr, actor=p.actor)
     audit(p, "cc.agent.run.finish", decision=final["status"], detail=run["id"], run_id=run["id"])
@@ -873,10 +954,21 @@ class LinkPtIn(BaseModel):
 
 @router.post("/projects/{project_id}/pt")
 def link_pt_project(project_id: str, body: LinkPtIn, p: Principal = Depends(current_principal)):
+    """Attach a PT survey project to a control-center project. Writing to the PT
+    project follows the PT rules (survey manager / org admin), and an existing
+    link is only moved by someone who may edit the project it points to."""
     get_in_workspace(p, "cc_projects", project_id, minimum=WS_EDITOR)
+    if p.role not in (Role.ORG_ADMIN, Role.SURVEY_MANAGER):
+        raise HTTPException(status_code=403, detail="survey manager or organisation admin required")
     ptp = _store().get("projects", body.pt_project_id, organization_id=p.organization_id)
     if not ptp:
         raise HTTPException(status_code=404, detail="pt project not found")
+    prev = ptp.get("cc_project_id")
+    if prev and prev != project_id:
+        try:
+            get_in_workspace(p, "cc_projects", prev, minimum=WS_EDITOR)
+        except HTTPException:
+            raise HTTPException(status_code=409, detail="pt project is linked to a project you cannot edit")
     row = _store().update("projects", body.pt_project_id, organization_id=p.organization_id, patch={"cc_project_id": project_id})
-    audit(p, "cc.project.link_pt", detail=f"{project_id} <- {body.pt_project_id}")
+    audit(p, "cc.project.link_pt", detail=f"{project_id} <- {body.pt_project_id}" + (f" (was {prev})" if prev else ""))
     return row

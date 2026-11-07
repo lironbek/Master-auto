@@ -72,4 +72,6 @@ def classify_http_error(r: httpx.Response) -> ConnectorError:
         return ConnectorError(f"authorization failed ({r.status_code})", status="reauth")
     if r.status_code == 429:
         return ConnectorError("rate limited", status="rate_limited")
-    return ConnectorError(f"provider error {r.status_code}: {r.text[:200]}", status="disconnected")
+    # Status only: an upstream body is never stored or shown (it could contain
+    # internal detail, and it is what an SSRF probe would want reflected).
+    return ConnectorError(f"provider error {r.status_code}", status="error")

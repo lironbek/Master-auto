@@ -66,12 +66,12 @@ export default function Costs() {
             )}
           </Card>
           <Card title="הוספת חיוב / הקצאה / מנוי">
-            <form onSubmit={addCost} className="grid gap-3 md:grid-cols-4">
+            <form key={current?.id ?? 'all'} onSubmit={addCost} className="grid gap-3 md:grid-cols-4">
               <Field label="מרחב"><select className="input" name="workspace_id" defaultValue={current?.id ?? workspaces[0].id}>{workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>
               <Field label="פרויקט"><select className="input" name="project_id"><option value="">לא משויך</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
               <Field label="ספק"><input className="input" name="provider" required placeholder="Vercel / OpenAI / Supabase" /></Field>
               <Field label="סוג"><select className="input" name="kind">{Object.entries(costKind).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-              <Field label="סכום"><input className="input ltr" name="amount" type="number" step="0.01" required /></Field>
+              <Field label="סכום"><input className="input ltr" name="amount" type="number" min={0} step="0.01" required /></Field>
               <Field label="מטבע"><input className="input ltr" name="currency" defaultValue="USD" /></Field>
               <Field label="מתאריך"><input className="input ltr" name="period_start" type="date" /></Field>
               <Field label="עד תאריך"><input className="input ltr" name="period_end" type="date" /></Field>
@@ -94,7 +94,7 @@ export default function Costs() {
             )}
           </Card>
           <Card title="הוספת מפתח">
-            <form onSubmit={addKey} className="grid gap-3 md:grid-cols-5">
+            <form key={current?.id ?? 'all'} onSubmit={addKey} className="grid gap-3 md:grid-cols-5">
               <Field label="מרחב"><select className="input" name="workspace_id" defaultValue={current?.id ?? workspaces[0].id}>{workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>
               <Field label="שם"><input className="input" name="name" required placeholder="Anthropic · BuildFlow" /></Field>
               <Field label="ספק"><select className="input" name="provider"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="other">אחר</option></select></Field>

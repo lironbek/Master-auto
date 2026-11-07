@@ -97,6 +97,25 @@ def get_in_workspace(p: Principal, table: str, row_id: str, *, minimum: str = WS
     return row
 
 
+def active_links(store, organization_id: str, **filters: Any) -> list[Row]:
+    """project_assets rows that are still in force. An unassigned link is kept
+    (source='removed') for history but must never count as an assignment."""
+    return [pa for pa in store.list("project_assets", organization_id=organization_id, **filters)
+            if pa.get("source") != "removed"]
+
+
+def assignment_index(store, organization_id: str) -> dict[str, str]:
+    return {pa["asset_id"]: pa["project_id"] for pa in active_links(store, organization_id)}
+
+
+SECRET_FIELDS = {"secret_enc", "report_token", "report_token_hash"}
+
+
+def public(row: Row) -> Row:
+    """Row without server-side secrets (encrypted tokens, report-token hash)."""
+    return {k: v for k, v in row.items() if k not in SECRET_FIELDS}
+
+
 def list_in_workspaces(p: Principal, table: str, workspace_id: Optional[str] = None, **filters: Any) -> list[Row]:
     store = get_store()
     ids = [workspace_id] if workspace_id else visible_workspace_ids(p)

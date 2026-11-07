@@ -30,7 +30,16 @@ export const auditAction: Record<string, string> = {
   'project.create': 'פרויקט נוצר', 'authorization.create': 'מסמך הרשאה נוסף', 'scope.create': 'היקף נוצר', 'scope.approve': 'היקף אושר',
   'run.create': 'ריצה נוצרה', 'run.start': 'ריצה החלה', 'run.stop': 'ריצה נעצרה', 'run.finish': 'ריצה הסתיימה',
   hypothesis: 'השערה', policy: 'החלטת מדיניות', execute: 'ביצוע', observe: 'תצפית', 'finding.create': 'ממצא נוצר', 'finding.status': 'סטטוס ממצא שונה',
-  'evidence.store_refused': 'שמירת ראיה סורבה', 'report.create': 'דוח הופק',
+  'evidence.store_refused': 'שמירת ראיה סורבה', 'report.create': 'דוח הופק', 'report.refused': 'הפקת דוח סורבה',
+  // control-center actions share the same audit log
+  'cc.workspace.create': 'מרחב נוצר', 'cc.workspace.member': 'חבר מרחב עודכן', 'cc.workspace.report_token': 'טוקן דיווח חודש',
+  'cc.project.create': 'פרויקט בקרה נוצר', 'cc.project.update': 'פרויקט בקרה עודכן', 'cc.project.link_pt': 'סקר אבטחה קושר לפרויקט',
+  'cc.asset.assign': 'נכס שויך', 'cc.asset.unassign': 'שיוך נכס הוסר', 'cc.asset.update': 'נכס עודכן',
+  'cc.connection.create': 'חיבור נוצר', 'cc.connection.update': 'חיבור עודכן', 'cc.connection.sync': 'סנכרון חיבור', 'cc.connection.disconnect': 'חיבור נותק',
+  'cc.inbox.dismiss': 'הצעת שיוך נדחתה', 'cc.session.create': 'סשן נפתח', 'cc.session.update': 'סשן עודכן', 'cc.session.link': 'אירוע קושר לסשן',
+  'cc.cost.create': 'רשומת עלות נוספה', 'cc.key.create': 'מפתח ספק נוסף', 'cc.key.rotate': 'סבב מפתח ספק',
+  'cc.agent.create': 'סוכן נוצר', 'cc.agent.update': 'סוכן עודכן', 'cc.agent.run': 'ריצת סוכן החלה', 'cc.agent.run.finish': 'ריצת סוכן הסתיימה', 'cc.agent.run.cancel': 'ריצת סוכן בוטלה',
+  'cc.seed.inventory': 'מלאי התחלתי נזרע',
 }
 export const evidenceKind: Record<string, string> = {
   password_exposure: 'חשיפת סיסמה', secret_exposure: 'חשיפת סוד', info_disclosure: 'חשיפת מידע', record_access: 'גישה לרשומה', screenshot: 'צילום מסך',
@@ -55,7 +64,7 @@ export function fmtDate(iso?: string | null): string {
 export const provider: Record<string, string> = { github: 'GitHub', vercel: 'Vercel', supabase: 'Supabase', n8n: 'n8n', reporter: 'מדווח חיצוני', anthropic: 'Anthropic', openai: 'OpenAI' }
 export const assetKind: Record<string, string> = { repo: 'ריפוזיטורי', vercel_project: 'פרויקט Vercel', supabase_project: 'פרויקט Supabase', workflow: 'Workflow', service: 'שירות', bot: 'בוט' }
 export const environment: Record<string, string> = { development: 'פיתוח', test: 'בדיקות', preview: 'Preview', production: 'Production', unclassified: 'לא מסווג' }
-export const connStatus: Record<string, string> = { ok: 'תקין', partial: 'חלקי', rate_limited: 'מוגבל קצב', reauth: 'דורש התחברות מחדש', disconnected: 'מנותק', new: 'חדש' }
+export const connStatus: Record<string, string> = { ok: 'תקין', partial: 'חלקי', rate_limited: 'מוגבל קצב', reauth: 'דורש התחברות מחדש', disconnected: 'מנותק', new: 'חדש', error: 'שגיאה זמנית' }
 export const eventKind: Record<string, string> = { deployment: 'פריסה', workflow_run: 'ריצת Actions', pull_request: 'PR', execution: 'ריצת Workflow', heartbeat: 'Heartbeat', session: 'סשן' }
 export const eventResult: Record<string, string> = { success: 'הצלחה', failure: 'כשל', running: 'בתהליך', cancelled: 'בוטל', unknown: 'אין דיווח' }
 export const sessionStatus: Record<string, string> = { open: 'פתוח', waiting: 'ממתין', done: 'הושלם', cancelled: 'בוטל' }

@@ -53,6 +53,23 @@ class PostgresStore:
             self._conn = psycopg.connect(self._dsn, autocommit=True, row_factory=dict_row)
         return self._conn
 
+    def _run(self, q, params, *, fetch: str):
+        """Execute with one reconnect: a pooler closes idle connections without the
+        client noticing until the next statement fails."""
+        for attempt in (0, 1):
+            try:
+                with self._c().cursor() as cur:
+                    cur.execute(q, params)
+                    return cur.fetchone() if fetch == "one" else cur.fetchall()
+            except (psycopg.OperationalError, psycopg.InterfaceError):
+                if attempt:
+                    raise
+                try:
+                    if self._conn is not None:
+                        self._conn.close()
+                finally:
+                    self._conn = None
+
     def _table(self, table: str) -> sql.Identifier:
         if table not in ALLOWED_TABLES:
             raise ValueError(f"unknown table: {table}")
@@ -67,18 +84,14 @@ class PostgresStore:
             cols=sql.SQL(", ").join(map(sql.Identifier, names)),
             vals=sql.SQL(", ").join(sql.Placeholder() * len(names)),
         )
-        with self._c().cursor() as cur:
-            cur.execute(q, [cols[n] for n in names])
-            got = cur.fetchone()
+        got = self._run(q, [cols[n] for n in names], fetch="one")
         return merge(_normalize(dict(got))) if got else dict(row)
 
     def get(self, table: str, row_id: str, *, organization_id: str) -> Optional[Row]:
         q = sql.SQL("select * from {t} where id = %s and organization_id = %s limit 1").format(
             t=self._table(table)
         )
-        with self._c().cursor() as cur:
-            cur.execute(q, [row_id, organization_id])
-            got = cur.fetchone()
+        got = self._run(q, [row_id, organization_id], fetch="one")
         return merge(_normalize(dict(got))) if got else None
 
     def update(self, table: str, row_id: str, *, organization_id: str, patch: Row) -> Optional[Row]:
@@ -97,9 +110,7 @@ class PostgresStore:
                 sql.SQL("{} = %s").format(sql.Identifier(n)) for n in names
             ),
         )
-        with self._c().cursor() as cur:
-            cur.execute(q, [cols[n] for n in names] + [row_id, organization_id])
-            got = cur.fetchone()
+        got = self._run(q, [cols[n] for n in names] + [row_id, organization_id], fetch="one")
         return merge(_normalize(dict(got))) if got else current
 
     def _where(self, table: str, filters: dict[str, Any], conds: list, params: list) -> None:
@@ -121,9 +132,7 @@ class PostgresStore:
             t=t, w=sql.SQL(" and ").join(conds),
             o=sql.Identifier(ORDER_COLUMN.get(table, "created_at")),
         )
-        with self._c().cursor() as cur:
-            cur.execute(q, params)
-            rows = cur.fetchall()
+        rows = self._run(q, params, fetch="all")
         return [merge(_normalize(dict(r))) for r in rows]
 
     def find_one(self, table: str, **filters: Any) -> Optional[Row]:
@@ -136,7 +145,9 @@ class PostgresStore:
         q = sql.SQL("select * from {t} where {w} limit 1").format(
             t=t, w=sql.SQL(" and ").join(conds) if conds else sql.SQL("true")
         )
-        with self._c().cursor() as cur:
-            cur.execute(q, params)
-            got = cur.fetchone()
+        got = self._run(q, params, fetch="one")
         return merge(_normalize(dict(got))) if got else None
+
+    def list_organization_ids(self) -> list[str]:
+        rows = self._run(sql.SQL("select id from organizations order by created_at"), [], fetch="all")
+        return [r["id"] for r in rows]

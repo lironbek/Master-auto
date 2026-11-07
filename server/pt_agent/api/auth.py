@@ -71,6 +71,18 @@ class Principal:
         return self.email or self.user_id
 
 
+def _header_auth_enabled() -> bool:
+    """The legacy X-Org-Id header is a test convenience only: it is honoured
+    solely for the in-memory store and never on a hosted deployment, whatever
+    the flag says."""
+    if os.environ.get("PT_ALLOW_HEADER_AUTH") != "1":
+        return False
+    from ..storage import backend_name
+
+    hosted = any(os.environ.get(k) for k in ("VERCEL", "VERCEL_ENV", "DATABASE_URL", "POSTGRES_URL", "SUPABASE_URL"))
+    return backend_name() == "memory" and not hosted
+
+
 def current_principal(
     authorization: Optional[str] = Header(default=None),
     x_org_id: Optional[str] = Header(default=None),
@@ -94,7 +106,7 @@ def current_principal(
         role = Role(mem[0]["role"]) if mem else Role.DEVELOPER
         return Principal(sess["organization_id"], user["id"], user["email"], user.get("display_name", ""), role)
 
-    if x_org_id and os.environ.get("PT_ALLOW_HEADER_AUTH") == "1":
+    if x_org_id and _header_auth_enabled():
         return Principal(x_org_id, "header", "header@local", "header auth", Role.ORG_ADMIN)
 
     raise HTTPException(status_code=401, detail="authentication required")

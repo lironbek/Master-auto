@@ -9,6 +9,11 @@ export function setToken(t: string | null) {
   try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY) } catch { /* ignore */ }
 }
 
+// Called when the server rejects the session (401). AuthProvider installs a
+// handler that clears the logged-in user so protected routes go back to /login.
+let onUnauthorized: () => void = () => {}
+export function setUnauthorizedHandler(fn: () => void) { onUnauthorized = fn }
+
 export class ApiError extends Error {
   status: number
   detail: unknown
@@ -29,7 +34,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   let data: unknown = null
   try { data = text ? JSON.parse(text) : null } catch { data = text }
   if (!res.ok) {
-    if (res.status === 401) setToken(null)
+    if (res.status === 401 && !path.startsWith('/auth/login') && !path.startsWith('/auth/register-org')) { setToken(null); onUnauthorized() }
     const detail = (data && typeof data === 'object' && 'detail' in (data as Record<string, unknown>))
       ? (data as Record<string, unknown>).detail : data
     throw new ApiError(res.status, detail)

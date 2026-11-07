@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import { api, getToken, setToken, type Me } from './api'
+import { api, getToken, setToken, setUnauthorizedHandler, type Me } from './api'
 
 interface AuthState {
   me: Me | null
@@ -16,8 +16,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // An expired or revoked session must log the user out everywhere, not only
+    // drop the token: otherwise every page keeps failing until Logout is pressed.
+    setUnauthorizedHandler(() => { setToken(null); setMe(null) })
     if (!getToken()) { setLoading(false); return }
     api.get<Me>('/auth/me').then(setMe).catch(() => setToken(null)).finally(() => setLoading(false))
+    return () => setUnauthorizedHandler(() => {})
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
