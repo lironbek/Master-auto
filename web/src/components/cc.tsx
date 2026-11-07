@@ -63,7 +63,7 @@ export function FirstWorkspace() {
       <p className="mb-3 text-sm text-slate-600">מרחב הוא גבול הרשאות ונתונים: כל החיבורים, הפרויקטים והסשנים שייכים למרחב אחד. דוגמאות: עבודה בקומקס, פרויקטים פרטיים, מרחב ללקוח.</p>
       <form onSubmit={create} className="grid gap-3 md:grid-cols-3">
         <Field label="שם המרחב"><input className="input" value={name} onChange={e => setName(e.target.value)} required placeholder="פרויקטים פרטיים" /></Field>
-        <Field label="סוג"><select className="input" value={kind} onChange={e => setKind(e.target.value)}><option value="personal">פרטי</option><option value="work">עבודה</option><option value="client">לקוח</option></select></Field>
+        <Field label="סוג"><select className="input" value={kind} onChange={e => setKind(e.target.value)}><option value="personal">פרטי</option><option value="work">עבודה</option><option value="client">לקוח</option><option value="trash">למחיקה</option></select></Field>
         <div className="flex items-end"><button className="btn-primary">יצירת מרחב</button></div>
       </form>
       <ErrorBox error={error} />

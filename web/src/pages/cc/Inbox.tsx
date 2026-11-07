@@ -7,7 +7,8 @@ import { assetKind, fmtDate, inboxKind, provider, t } from '../../i18n'
 import { useWorkspace } from '../../workspace'
 
 export default function InboxPage() {
-  const { qs, loading } = useWorkspace()
+  const { qs, loading, workspaces } = useWorkspace()
+  const wsName = (id: string) => workspaces.find(w => w.id === id)?.name ?? ''
   const [items, setItems] = useState<InboxItem[] | null>(null)
   const [projects, setProjects] = useState<CcProject[]>([])
   const [error, setError] = useState<unknown>(null)
@@ -15,7 +16,7 @@ export default function InboxPage() {
   const [choice, setChoice] = useState<Record<string, string>>({})
   const [newName, setNewName] = useState<Record<string, string>>({})
 
-  const load = () => Promise.all([api.get<InboxItem[]>(`/cc/inbox${qs}`), api.get<CcProject[]>(`/cc/projects${qs}`)]).then(([i, p]) => { setItems(i); setProjects(p) }).catch(setError)
+  const load = () => Promise.all([api.get<InboxItem[]>(`/cc/inbox${qs}`), api.get<CcProject[]>('/cc/projects')]).then(([i, p]) => { setItems(i); setProjects(p) }).catch(setError)
   useEffect(() => { if (!loading) load() }, [qs, loading])
 
   async function act(item: InboxItem, action: string) {
@@ -38,7 +39,7 @@ export default function InboxPage() {
         {!items ? <Spinner /> : items.length === 0 ? <Empty>תיבת המיון ריקה.</Empty> : (
           <ul className="divide-y divide-slate-100">
             {items.map(i => {
-              const wsProjects = projects.filter(p => p.workspace_id === i.workspace_id && p.status === 'active')
+              const wsProjects = projects.filter(p => p.status === 'active').sort((a, b) => (a.workspace_id === i.workspace_id ? -1 : b.workspace_id === i.workspace_id ? 1 : 0))
               const suggested = wsProjects.find(p => p.id === i.suggested_project_id)
               return (
                 <li key={i.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
@@ -48,7 +49,7 @@ export default function InboxPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <select className="input w-44" value={choice[i.id] ?? i.suggested_project_id ?? ''} onChange={e => setChoice({ ...choice, [i.id]: e.target.value })}>
-                      <option value="">בחר פרויקט…</option>{wsProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      <option value="">בחר פרויקט…</option>{wsProjects.map(p => <option key={p.id} value={p.id}>{p.name}{p.workspace_id !== i.workspace_id ? ` · ${wsName(p.workspace_id)}` : ""}</option>)}
                     </select>
                     <button className="btn-primary" disabled={!(choice[i.id] || i.suggested_project_id)} onClick={() => act(i, 'assign')}>שייך</button>
                     <input className="input w-40" placeholder="פרויקט חדש…" value={newName[i.id] ?? ''} onChange={e => setNewName({ ...newName, [i.id]: e.target.value })} />

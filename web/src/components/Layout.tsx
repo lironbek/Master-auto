@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Activity, BarChart3, Bell, Bot, Boxes, ClipboardList, Coins, Eye, FolderKanban, Inbox, LayoutDashboard, Link2, LogOut, Search, Shield, ShieldCheck, Sparkles, Users, Vault } from 'lucide-react'
+import { Activity, BarChart3, Bell, Bot, Boxes, ClipboardList, Coins, Eye, FolderKanban, Inbox, LayoutDashboard, Layers, Link2, LogOut, Search, Shield, ShieldCheck, Sparkles, Users, Vault } from 'lucide-react'
 import { api } from '../api'
 import { useAuth } from '../auth'
 import { role, t } from '../i18n'
@@ -28,7 +28,10 @@ const security: Item[] = [
   { to: '/security/reports', label: 'דוחות', icon: ClipboardList, tint: 'bg-amber-100 text-amber-700' },
   { to: '/security/audit', label: 'ביקורת', icon: ClipboardList, tint: 'bg-slate-100 text-slate-600' },
 ]
-const admin: Item[] = [{ to: '/users', label: 'משתמשים', icon: Users, tint: 'bg-emerald-100 text-emerald-700' }]
+const admin: Item[] = [
+  { to: '/workspaces', label: 'מרחבים', icon: Layers, tint: 'bg-indigo-100 text-indigo-700' },
+  { to: '/users', label: 'משתמשים', icon: Users, tint: 'bg-emerald-100 text-emerald-700' },
+]
 
 function Nav({ items }: { items: Item[] }) {
   return <>{items.map(({ to, label, icon: Icon, end, tint }) => (

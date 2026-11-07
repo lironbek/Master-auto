@@ -32,7 +32,7 @@ export const auditAction: Record<string, string> = {
   hypothesis: 'השערה', policy: 'החלטת מדיניות', execute: 'ביצוע', observe: 'תצפית', 'finding.create': 'ממצא נוצר', 'finding.status': 'סטטוס ממצא שונה',
   'evidence.store_refused': 'שמירת ראיה סורבה', 'report.create': 'דוח הופק', 'report.refused': 'הפקת דוח סורבה',
   // control-center actions share the same audit log
-  'cc.workspace.create': 'מרחב נוצר', 'cc.workspace.member': 'חבר מרחב עודכן', 'cc.workspace.report_token': 'טוקן דיווח חודש',
+  'cc.workspace.create': 'מרחב נוצר', 'cc.workspace.update': 'מרחב עודכן', 'cc.workspace.archive': 'מרחב אורכב', 'cc.project.move': 'פרויקט הועבר למרחב אחר', 'cc.workspace.member': 'חבר מרחב עודכן', 'cc.workspace.report_token': 'טוקן דיווח חודש',
   'cc.project.create': 'פרויקט בקרה נוצר', 'cc.project.update': 'פרויקט בקרה עודכן', 'cc.project.link_pt': 'סקר אבטחה קושר לפרויקט',
   'cc.asset.assign': 'נכס שויך', 'cc.asset.unassign': 'שיוך נכס הוסר', 'cc.asset.update': 'נכס עודכן',
   'cc.connection.create': 'חיבור נוצר', 'cc.connection.update': 'חיבור עודכן', 'cc.connection.sync': 'סנכרון חיבור', 'cc.connection.disconnect': 'חיבור נותק',
@@ -87,6 +87,7 @@ export const eventKind: Record<string, string> = { deployment: 'פריסה', wor
 export const eventResult: Record<string, string> = { success: 'הצלחה', failure: 'כשל', running: 'בתהליך', cancelled: 'בוטל', unknown: 'אין דיווח' }
 export const sessionStatus: Record<string, string> = { open: 'פתוח', waiting: 'ממתין', done: 'הושלם', cancelled: 'בוטל' }
 export const sessionTool: Record<string, string> = { manual: 'ידני', claude_code: 'Claude Code', codex: 'Codex', other: 'אחר' }
+export const workspaceKind: Record<string, string> = { personal: 'פרטי', work: 'עבודה', client: 'לקוח', trash: 'למחיקה' }
 export const importance: Record<string, string> = { critical: 'קריטי', high: 'גבוה', normal: 'רגיל', low: 'נמוך' }
 export const inboxKind: Record<string, string> = { new_asset: 'נכס חדש', mismatch: 'חוסר התאמה', duplicate: 'כפילות אפשרית', missing_source: 'מקור שנעלם' }
 export const costKind: Record<string, string> = { reported: 'חיוב מדווח', usage: 'שימוש AI', estimate: 'אומדן', allocation: 'הקצאה משותפת', subscription: 'מנוי חיצוני' }

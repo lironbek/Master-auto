@@ -14,6 +14,12 @@ export default function CcProjects() {
   const [open, setOpen] = useState(false)
   const [f, setF] = useState({ workspace_id: '', name: '', description: '', owner: '', importance: 'normal', environment: 'unclassified', budget_usd: 0 })
   const [archived, setArchived] = useState(false)
+  const [note, setNote] = useState('')
+  const wsName = (id: string) => workspaces.find(w => w.id === id)?.name ?? '—'
+  async function move(p: CcProject, wsId: string) {
+    if (!wsId || wsId === p.workspace_id) return
+    try { await api.post(`/cc/projects/${p.id}/move`, { workspace_id: wsId }); setNote(`"${p.name}" סווג למרחב "${wsName(wsId)}".`); setError(null); load() } catch (err) { setError(err) }
+  }
 
   const load = () => api.get<OverviewData>(`/cc/overview${qs}`).then(d => setItems(d.projects)).catch(setError)
   useEffect(() => { if (!loading && workspaces.length) load() }, [qs, loading, workspaces.length])
@@ -31,10 +37,11 @@ export default function CcProjects() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-xl font-bold">פרויקטים</h1><p className="text-sm text-slate-500">שם, בעלים, סביבה, חיבורים, חריגה אחרונה וסשן אחרון. ארכוב נעשה מעמוד הפרויקט (עריכה → סטטוס).</p></div>
+        <div><h1 className="text-xl font-bold">פרויקטים</h1><p className="text-sm text-slate-500">שם, מרחב (סיווג: Comax / פרטי / לקוח / למחיקה), בעלים, סביבה, נכסים וחריגה אחרונה. שינוי המרחב מהעמודה מעביר את הפרויקט מיד. <Link to="/workspaces" className="text-indigo-600">ניהול מרחבים</Link></p></div>
         <button className="btn-primary" onClick={() => setOpen(v => !v)}><Plus className="h-4 w-4" /> פרויקט חדש</button>
       </div>
       <ErrorBox error={error} />
+      {note && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900" role="status">{note}</div>}
       {open && (
         <Card title="פרויקט חדש">
           <form onSubmit={create} className="grid gap-3 md:grid-cols-3">
@@ -52,10 +59,11 @@ export default function CcProjects() {
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={archived} onChange={e => setArchived(e.target.checked)} /> הצג גם ארכיון</label>
       <Card>
         {!items ? <Spinner /> : items.length === 0 ? <Empty>אין פרויקטים במרחב הזה.</Empty> : (
-          <Table head={['פרויקט', 'בעלים', 'סביבה', 'חשיבות', 'נכסים', 'מצב', 'סשן אחרון']}>
+          <Table head={['פרויקט', 'מרחב', 'בעלים', 'סביבה', 'חשיבות', 'נכסים', 'מצב', 'סשן אחרון']}>
             {items.filter(p => archived || p.status === 'active').map(p => (
               <tr key={p.id}>
                 <td className="px-3 py-2"><Link to={`/projects/${p.id}`} className="font-medium text-indigo-700">{p.name}</Link>{p.status === 'archived' && <span className="badge mr-2 bg-slate-200 text-slate-600">ארכיון</span>}<div className="text-xs text-slate-500">{p.description}</div></td>
+                <td className="px-3 py-2"><select className="input w-36 py-1 text-xs" value={p.workspace_id} onChange={e => move(p, e.target.value)} aria-label={`מרחב עבור ${p.name}`}>{workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select></td>
                 <td className="px-3 py-2 text-sm">{p.owner || '—'}</td>
                 <td className="px-3 py-2 text-xs">{t(environment, p.environment)}</td>
                 <td className="px-3 py-2 text-xs">{t(importance, p.importance)}</td>

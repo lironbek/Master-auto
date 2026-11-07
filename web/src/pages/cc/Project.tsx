@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { useWorkspace } from '../../workspace'
 import { api, type Asset, type CcClient, type CcProjectDetail, type ProjectScan } from '../../api'
 import { Card, Empty, ErrorBox, Field, Mono, Spinner, Stat, Table } from '../../components/ui'
 import { EnvPill, EventRow, ExtLink, Facts, ResultPill, TonePill } from '../../components/cc'
@@ -13,6 +14,7 @@ const gradeTone: Record<string, string> = { A: 'bg-emerald-100 text-emerald-800'
 
 export default function CcProject() {
   const { id } = useParams()
+  const { workspaces, reload: reloadWs } = useWorkspace()
   const [d, setD] = useState<CcProjectDetail | null>(null)
   const [tab, setTab] = useState<Tab>('summary')
   const [error, setError] = useState<unknown>(null)
@@ -24,7 +26,7 @@ export default function CcProject() {
 
   const load = useCallback(() => api.get<CcProjectDetail>(`/cc/projects/${id}`).then(setD).catch(setError), [id])
   useEffect(() => { load() }, [load])
-  useEffect(() => { if (d && tab === 'assets') api.get<Asset[]>(`/cc/assets?workspace_id=${d.project.workspace_id}`).then(setAllAssets).catch(setError) }, [d, tab])
+  useEffect(() => { if (d && tab === 'assets') api.get<Asset[]>('/cc/assets').then(setAllAssets).catch(setError) }, [d, tab])
   useEffect(() => { if (d && edit) api.get<CcClient[]>(`/cc/clients?workspace_id=${d.project.workspace_id}`).then(setClients).catch(setError) }, [d, edit])
 
   if (error && !d) return <ErrorBox error={error} />
@@ -59,6 +61,10 @@ export default function CcProject() {
     setBusy('scan'); setError(null)
     try { const s = await api.post<ProjectScan>(`/cc/projects/${id}/scan?kind=${kind}`); setScan(s); await load() } catch (err) { setError(err) } finally { setBusy(null) }
   }
+  async function move(wsId: string) {
+    if (!wsId || wsId === p.workspace_id) return
+    try { await api.post(`/cc/projects/${id}/move`, { workspace_id: wsId }); await load(); await reloadWs() } catch (err) { setError(err) }
+  }
   async function openScan(scanId: string) {
     try { setScan(await api.get<ProjectScan>(`/cc/scans/${scanId}`)) } catch (err) { setError(err) }
   }
@@ -80,7 +86,12 @@ export default function CcProject() {
           <h1 className="flex items-center gap-3 text-xl font-bold">{p.name} <TonePill tone={prodFail ? 'bad' : 'ok'}>{prodFail ? 'כשל בייצור' : 'ייצור תקין'}</TonePill>{d.project.last_scan_grade && <button className={`badge ${gradeTone[d.project.last_scan_grade] ?? 'bg-slate-100'}`} onClick={() => setTab('scans')}>סריקה {d.project.last_scan_grade}</button>}{p.status === 'archived' && <span className="badge bg-slate-200 text-slate-600">בארכיון</span>}</h1>
           <p className="text-sm text-slate-500">{p.description || <Mono>{p.id}</Mono>}</p>
         </div>
-        <button className="btn-secondary" onClick={() => setEdit(v => !v)}>עריכה</button>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-xs text-slate-500">מרחב
+            <select className="input w-40 py-1.5" value={p.workspace_id} onChange={e => move(e.target.value)} aria-label="מרחב הפרויקט">{workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
+          </label>
+          <button className="btn-secondary" onClick={() => setEdit(v => !v)}>עריכה</button>
+        </div>
       </div>
       <ErrorBox error={error} />
       {edit && (
@@ -95,7 +106,7 @@ export default function CcProject() {
             <Field label="סטטוס"><select className="input" name="status" defaultValue={p.status}><option value="active">פעיל</option><option value="archived">ארכיון</option></select></Field>
             <Field label="לקוח" hint="שימוש ב-API שמדווח לפרויקט נזקף ללקוח הזה"><select className="input" name="client_id" defaultValue={p.client_id ?? ''}><option value="">ללא לקוח</option>{clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
             <Field label="מפתח AI ברירת מחדל"><select className="input" name="default_key_id" defaultValue={p.default_key_id ?? ''}><option value="">ללא</option>{d.keys.map(k => <option key={k.id} value={k.id}>{k.name} · {k.masked}</option>)}</select></Field>
-            <div className="md:col-span-3 text-xs text-slate-500">שינוי מרחב מתבצע דרך אשף העברה נפרד. סודות והרשאות לא עוברים עם השיוך.</div>
+            <div className="md:col-span-3 text-xs text-slate-500">שינוי מרחב נעשה מהבורר שליד כפתור העריכה. לקוח ומפתח ברירת מחדל שייכים למרחב ומתאפסים בהעברה.</div>
             <div className="md:col-span-3"><button className="btn-primary">שמירה</button></div>
           </form>
         </Card>
@@ -272,7 +283,7 @@ export default function CcProject() {
             )}
           </Card>
           <Card title="שיוך נכס מהקטלוג">
-            {allAssets.filter(a => !assigned.has(a.id)).length === 0 ? <Empty>כל הנכסים במרחב כבר משויכים, או שאין חיבורים.</Empty> : (
+            {allAssets.filter(a => !assigned.has(a.id)).length === 0 ? <Empty>כל הנכסים כבר משויכים, או שאין חיבורים.</Empty> : (
               <ul className="divide-y divide-slate-100 text-sm">
                 {allAssets.filter(a => !assigned.has(a.id)).map(a => <li key={a.id} className="flex items-center justify-between py-2"><span><bdi>{a.name}</bdi> <span className="text-xs text-slate-500">{t(assetKind, a.kind)}</span></span><button className="btn-secondary" onClick={() => assign(a.id)}>שייך</button></li>)}
               </ul>

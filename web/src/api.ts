@@ -67,7 +67,7 @@ export interface Report { id: string; project_id: string; run_id: string; findin
 export interface Dashboard { projects: number; runs: { total: number; by_status: Record<string, number> }; findings: { total: number; open: number; by_severity: Record<string, number> }; recent_runs: Run[]; recent_findings: Finding[]; recent_events: AuditEvent[]; storage: string }
 
 // --- Control Center types ---------------------------------------------------
-export interface Workspace { id: string; name: string; kind: string; created_at: string; report_token?: string }
+export interface Workspace { id: string; name: string; kind: string; created_at: string; report_token?: string; archived_at?: string | null; projects?: number; connections?: number; assets?: number }
 export interface CcProject { id: string; workspace_id: string; name: string; description?: string; owner: string; importance: string; status: string; environment: string; budget_usd?: number; default_key_id?: string | null; client_id?: string | null; created_at: string; tone?: 'ok' | 'warn' | 'bad'; last_failure?: CcEvent | null; last_session?: WorkSession | null; asset_count?: number; providers?: string[]; last_activity_at?: string | null }
 export interface CcClient { id: string; workspace_id: string; name: string; external_ref: string; notes?: string; created_at: string; projects?: { id: string; name: string }[] }
 export interface UsageEntry { id: string; workspace_id: string; project_id?: string | null; client_id?: string | null; provider: string; metric: string; quantity: number | string; unit: string; interface: string; model: string; external_id?: string | null; occurred_at: string; client_name?: string; project_name?: string }

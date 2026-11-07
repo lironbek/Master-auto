@@ -22,6 +22,7 @@ import Usage from './pages/cc/Usage'
 import Agents from './pages/cc/Agents'
 import AgentRunPage from './pages/cc/AgentRun'
 import Alerts from './pages/cc/Alerts'
+import Workspaces from './pages/cc/Workspaces'
 // Security surveys (PT module)
 import PtDashboard from './pages/pt/Dashboard'
 import PtProjects from './pages/pt/Projects'
@@ -62,6 +63,7 @@ function App() {
         <Route path="agents/runs/:id" element={<AgentRunPage />} />
         <Route path="alerts" element={<Alerts />} />
         <Route path="users" element={<UsersPage />} />
+        <Route path="workspaces" element={<Workspaces />} />
         <Route path="security">
           <Route index element={<PtDashboard />} />
           <Route path="projects" element={<PtProjects />} />

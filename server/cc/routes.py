@@ -70,16 +70,71 @@ class WorkspaceIn(BaseModel):
     kind: str = "personal"
 
 
+WORKSPACE_KINDS = ("personal", "work", "client", "trash")
+
+
 @router.get("/workspaces")
-def list_workspaces(p: Principal = Depends(current_principal)):
+def list_workspaces(include_archived: bool = False, p: Principal = Depends(current_principal)):
+    """Workspaces the caller may see, with what each one holds (projects,
+    connections, assets) so they can be organised and emptied before archiving."""
+    store, org = _store(), p.organization_id
     ids = visible_workspace_ids(p)
-    return [public(w) for w in _store().list("workspaces", organization_id=p.organization_id) if w["id"] in ids]
+    counts: dict[str, dict[str, int]] = {}
+    for table, key in (("cc_projects", "projects"), ("connections", "connections"), ("cc_assets", "assets")):
+        for r in store.list(table, organization_id=org):
+            if table == "cc_projects" and r.get("status") == "archived":
+                continue
+            if table == "cc_assets" and r.get("removed_at"):
+                continue
+            bucket = counts.setdefault(r["workspace_id"], {})
+            bucket[key] = bucket.get(key, 0) + 1
+    out = []
+    for w in store.list("workspaces", organization_id=org):
+        if w["id"] not in ids or (w.get("archived_at") and not include_archived):
+            continue
+        c = counts.get(w["id"], {})
+        out.append({**public(w), "projects": c.get("projects", 0), "connections": c.get("connections", 0), "assets": c.get("assets", 0)})
+    return out
+
+
+class WorkspacePatch(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=80)
+    kind: Optional[str] = None
+
+
+@router.patch("/workspaces/{ws_id}")
+def patch_workspace(ws_id: str, body: WorkspacePatch, p: Principal = Depends(current_principal)):
+    require_workspace(p, ws_id, WS_ADMIN)
+    patch = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "kind" in patch and patch["kind"] not in WORKSPACE_KINDS:
+        raise HTTPException(status_code=422, detail=f"kind must be one of {', '.join(WORKSPACE_KINDS)}")
+    row = _store().update("workspaces", ws_id, organization_id=p.organization_id, patch=patch)
+    audit(p, "cc.workspace.update", detail=f"{ws_id} {','.join(patch)}")
+    return public(row)
+
+
+@router.delete("/workspaces/{ws_id}")
+def archive_workspace(ws_id: str, p: Principal = Depends(current_principal)):
+    """Archive an empty workspace (it disappears from the lists; data is kept).
+    A workspace that still holds projects or connections is refused with the
+    counts so the caller can move or disconnect them first."""
+    require_workspace(p, ws_id, WS_ADMIN)
+    store, org = _store(), p.organization_id
+    projects = [x for x in store.list("cc_projects", organization_id=org, workspace_id=ws_id) if x.get("status") != "archived"]
+    conns = [c for c in store.list("connections", organization_id=org, workspace_id=ws_id) if c.get("status") != "disconnected"]
+    if projects or conns:
+        raise HTTPException(status_code=409, detail=f"המרחב עדיין מכיל {len(projects)} פרויקטים ו-{len(conns)} חיבורים פעילים. העבר את הפרויקטים ונתק את החיבורים לפני הארכוב.")
+    row = store.update("workspaces", ws_id, organization_id=org, patch={"archived_at": iso()})
+    audit(p, "cc.workspace.archive", detail=ws_id)
+    return public(row)
 
 
 @router.post("/workspaces")
 def create_workspace(body: WorkspaceIn, p: Principal = Depends(current_principal)):
     if p.role not in (Role.ORG_ADMIN, Role.SURVEY_MANAGER):
         raise HTTPException(status_code=403, detail="organisation admin required")
+    if body.kind not in WORKSPACE_KINDS:
+        raise HTTPException(status_code=422, detail=f"kind must be one of {', '.join(WORKSPACE_KINDS)}")
     ws = {"id": new_id("ws"), "organization_id": p.organization_id, "name": body.name, "kind": body.kind, "created_at": iso()}
     _store().insert("workspaces", ws)
     _store().insert("workspace_members", {"id": new_id("wsm"), "organization_id": p.organization_id, "workspace_id": ws["id"],
@@ -292,20 +347,20 @@ def get_project(project_id: str, p: Principal = Depends(current_principal)):
     pr = get_in_workspace(p, "cc_projects", project_id)
     links = active_links(store, org, project_id=project_id)
     assets = [{**a, "link_source": l["source"]} for l in links for a in [store.get("cc_assets", l["asset_id"], organization_id=org)] if a]
-    events = sorted(store.list("activity_events", organization_id=org, workspace_id=pr["workspace_id"], project_id=project_id),
+    events = sorted(store.list("activity_events", organization_id=org, project_id=project_id),
                     key=lambda e: str(e.get("occurred_at")), reverse=True)[:50]
     sessions = store.list("work_sessions", organization_id=org, workspace_id=pr["workspace_id"], project_id=project_id)
     costs = store.list("cost_entries", organization_id=org, workspace_id=pr["workspace_id"], project_id=project_id)
     agents = [a for a in store.list("cc_agents", organization_id=org, workspace_id=pr["workspace_id"])
               if a.get("project_id") in (None, "", project_id)]
     runs = store.list("agent_runs", organization_id=org, workspace_id=pr["workspace_id"], project_id=project_id)
-    conns = {c["id"]: public(c) for c in store.list("connections", organization_id=org, workspace_id=pr["workspace_id"])}
+    conns = {c["id"]: public(c) for c in store.list("connections", organization_id=org)}
     keys = [public(k_) for k_ in store.list("provider_keys", organization_id=org, workspace_id=pr["workspace_id"])]
     pt_projects = [x for x in store.list("projects", organization_id=org) if x.get("cc_project_id") == project_id]
     month_cost = sum(float(c.get("amount") or 0) for c in costs if _month(c) == now().strftime("%Y-%m"))
     client = store.get("clients", pr["client_id"], organization_id=org) if pr.get("client_id") else None
     start, end = usage_engine.window(None, None)
-    usage_rows = usage_engine.filter_entries(store.list("usage_entries", organization_id=org, workspace_id=pr["workspace_id"], project_id=project_id),
+    usage_rows = usage_engine.filter_entries(store.list("usage_entries", organization_id=org, project_id=project_id),
                                              start=start, end=end, client_id=None, project_id=None, provider=None, interface=None)
     usage = usage_engine.summarize(usage_rows, {client["id"]: client} if client else {}, {pr["id"]: pr})
     scans = sorted(store.list("project_scans", organization_id=org, project_id=project_id), key=lambda s: str(s.get("created_at")), reverse=True)
@@ -380,6 +435,45 @@ def patch_project(project_id: str, body: ProjectPatch, p: Principal = Depends(cu
     return row
 
 
+class MoveIn(BaseModel):
+    workspace_id: str
+
+
+# Rows that belong to a project and follow it when it changes workspace.
+PROJECT_SCOPED = ("work_sessions", "cost_entries", "agent_runs", "project_scans")   # usage entries stay with the reporting workspace
+
+
+@router.post("/projects/{project_id}/move")
+def move_project(project_id: str, body: MoveIn, p: Principal = Depends(current_principal)):
+    """Classify a project under another workspace (Comax / private / client /
+    to-delete ...). Project-scoped rows move with it; linked assets stay with
+    the connection that found them, and the links are kept. A client or default
+    key from the old workspace is cleared, because both are workspace-scoped."""
+    store, org = _store(), p.organization_id
+    pr = get_in_workspace(p, "cc_projects", project_id, minimum=WS_EDITOR)
+    target = require_workspace(p, body.workspace_id, WS_EDITOR)
+    if target.get("archived_at"):
+        raise HTTPException(status_code=422, detail="target workspace is archived")
+    if pr["workspace_id"] == body.workspace_id:
+        return {"project": pr, "moved": 0, "cleared": []}
+    cleared = []
+    patch: Row = {"workspace_id": body.workspace_id}
+    if pr.get("client_id"):
+        patch["client_id"] = None
+        cleared.append("client_id")
+    if pr.get("default_key_id"):
+        patch["default_key_id"] = None
+        cleared.append("default_key_id")
+    moved = 0
+    for table in PROJECT_SCOPED:
+        for row in store.list(table, organization_id=org, workspace_id=pr["workspace_id"], project_id=project_id):
+            store.update(table, row["id"], organization_id=org, patch={"workspace_id": body.workspace_id})
+            moved += 1
+    row = store.update("cc_projects", project_id, organization_id=org, patch=patch)
+    audit(p, "cc.project.move", detail=f"{project_id} {pr['workspace_id']} -> {body.workspace_id}")
+    return {"project": row, "moved": moved, "cleared": cleared}
+
+
 class AssignIn(BaseModel):
     asset_id: str
 
@@ -387,9 +481,10 @@ class AssignIn(BaseModel):
 @router.post("/projects/{project_id}/assets")
 def assign_asset(project_id: str, body: AssignIn, p: Principal = Depends(current_principal)):
     pr = get_in_workspace(p, "cc_projects", project_id, minimum=WS_EDITOR)
-    asset = get_in_workspace(p, "cc_assets", body.asset_id)
-    if asset["workspace_id"] != pr["workspace_id"]:
-        raise HTTPException(status_code=422, detail="asset and project must share a workspace")   # PRD 4.4
+    # An asset may be classified under a project in another workspace (the
+    # project's workspace is its category; the asset stays with the connection
+    # that found it) as long as the caller can edit both sides.
+    asset = get_in_workspace(p, "cc_assets", body.asset_id, minimum=WS_EDITOR)
     store, org = _store(), p.organization_id
     existing = store.list("project_assets", organization_id=org, project_id=project_id, asset_id=body.asset_id)
     if not existing:
@@ -410,7 +505,7 @@ def assign_asset(project_id: str, body: AssignIn, p: Principal = Depends(current
     if latest and latest.get("result") == "failure":
         sync_engine._alert(store, org, pr["workspace_id"], "failure", "asset", body.asset_id,
                            f"כשל בייצור: {latest.get('title', '')}"[:200], occurred_at=latest.get("occurred_at"))
-    for i in store.list("inbox_items", organization_id=org, workspace_id=pr["workspace_id"], asset_id=body.asset_id, status="open"):
+    for i in store.list("inbox_items", organization_id=org, workspace_id=asset["workspace_id"], asset_id=body.asset_id, status="open"):
         store.update("inbox_items", i["id"], organization_id=org, patch={"status": "resolved", "resolved_project_id": project_id})
     audit(p, "cc.asset.assign", detail=f"{body.asset_id} -> {project_id}")
     return {"ok": True}
@@ -760,7 +855,7 @@ def get_session(session_id: str, p: Principal = Depends(current_principal)):
     # from the last 7 days, are *proposed*; nothing is linked by time alone.
     start = parse_dt(s.get("started_at")) or now()
     floor = min(start, now() - timedelta(days=7))
-    suggestions = sorted([e for e in store.list("activity_events", organization_id=org, workspace_id=s["workspace_id"], project_id=s["project_id"])
+    suggestions = sorted([e for e in store.list("activity_events", organization_id=org, project_id=s["project_id"])
                           if not e.get("session_id") and (parse_dt(e.get("occurred_at")) or now()) >= floor],
                          key=lambda e: str(e.get("occurred_at")), reverse=True)[:20]
     runs = store.list("agent_runs", organization_id=org, workspace_id=s["workspace_id"], session_id=session_id)
@@ -932,8 +1027,8 @@ def report_usage(body: usage_engine.UsageReportIn, x_report_token: Optional[str]
         e = usage_engine.normalise(e)
         if e.project_id:
             pr = store.get("cc_projects", e.project_id, organization_id=org)
-            if not pr or pr["workspace_id"] != ws["id"]:
-                raise HTTPException(status_code=422, detail=f"project {e.project_id} not in workspace")
+            if not pr:
+                raise HTTPException(status_code=422, detail=f"project {e.project_id} not found")
             if not e.client and not e.client_id and pr.get("client_id"):
                 e.client_id = pr["client_id"]      # the project's client by default
         cid = usage_engine.resolve_client(store, org, ws["id"], client_id=e.client_id, name=e.client, created=created)
