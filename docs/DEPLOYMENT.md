@@ -14,14 +14,14 @@ Vercel Authentication כבוי בשני הפרויקטים: האפליקציה �
 | משתנה | סטטוס | הערה |
 |---|---|---|
 | `PT_ALLOW_SELF_REGISTER=0` | מוגדר | הרשמה פתוחה כבויה; מנהל מוסיף משתמשים ממסך המשתמשים |
-| `DATABASE_URL` | **חסר** | בלי זה השרת עובד על זיכרון ונמחק בכל invocation. ערך: `postgresql://pt_app:<סיסמה>@aws-1-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require` |
-| `CC_SECRET_KEY` | **חסר** | מפתח Fernet. בלי זה אי אפשר לשמור חיבורים/מפתחות (`/healthz` מחזיר `secrets:false`) |
-| `PT_ORG_HMAC_KEY` | **חסר** | אותו ערך כמו בפרויקט `pt` כדי שטביעות הראיות הקיימות יתאימו |
-| `CRON_SECRET` | **חסר** | מאמת את ה-cron `*/15 * * * *` ל-`/cc/sync/all` |
+| `DATABASE_URL` | מוגדר | `postgresql://pt_app.<project-ref>:<סיסמה>@aws-1-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require` (ה-pooler דורש את מזהה הפרויקט בשם המשתמש) |
+| `CC_SECRET_KEY` | מוגדר | מפתח Fernet להצפנת סודות חיבורים ומפתחות ספק |
+| `PT_ORG_HMAC_KEY` | מוגדר | מפתח חדש (7.11.2026); טביעות אצבע של ראיות ישנות מהפריסה הקודמת לא יתאימו לחדשות |
+| `CRON_SECRET` | מוגדר | מאמת את ה-cron `*/15 * * * *` ל-`/cc/sync/all` |
 
-להגדרה: Vercel → Project `control-center-api` → Settings → Environment Variables
-(production + preview), ואז Redeploy. אימות: `GET /healthz` צריך להחזיר
-`"storage":"postgres"` ו-`"secrets":true`, ו-`GET /api/healthz` דרך ה-UI אותו דבר.
+אומת: `GET /healthz` מחזיר `"storage":"postgres"`, `"secrets":true` ו-`migrations.ran=true`,
+וגם `GET /api/healthz` דרך ה-UI. סיסמת תפקיד ה-DB `pt_app` סובבה ב-7.11.2026 ועודכנה
+גם בפרויקט `pt` הישן. הסיסמאות עצמן אינן ברפו.
 
 ## מסד הנתונים
 
