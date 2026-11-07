@@ -102,6 +102,9 @@ def test_full_flow_connection_sync_inbox_assign_session_cost(client):
     ov = client.get("/cc/overview", headers=h).json()
     assert ov["projects"][0]["tone"] == "bad" and ov["unassigned"] == 1 and ov["inbox_open"] == 1
     assert any(a["kind"] == "failure" for a in ov["critical_alerts"])
+    st = ov["stats"]
+    assert len(st["activity"]) == 14 and st["this_week"]["failures"] >= 1 and st["assets_by_provider"]
+    assert ov["projects"][0]["providers"] and ov["projects"][0]["last_activity_at"]
 
     # Session: create, link the failure event, close with an outcome.
     ses = client.post("/cc/sessions", json={"project_id": pr["id"], "title": "סידור משתני מבצע", "tool": "claude_code"}, headers=h).json()

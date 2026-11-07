@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api, type Asset, type CcProject } from '../../api'
 import { Card, Empty, ErrorBox, Spinner, Table } from '../../components/ui'
 import { EnvPill } from '../../components/cc'
@@ -15,7 +15,8 @@ export default function Assets() {
   const [error, setError] = useState<unknown>(null)
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
-  const [q, setQ] = useState('')
+  const [params] = useSearchParams()
+  const [q, setQ] = useState(params.get('q') ?? '')
   const [kind, setKind] = useState('')
 
   const load = () => Promise.all([api.get<Asset[]>(`/cc/assets${qs}`), api.get<CcProject[]>(`/cc/projects${qs}`)])

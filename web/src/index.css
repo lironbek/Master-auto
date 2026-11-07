@@ -4,7 +4,7 @@
 
 :root { color-scheme: light; }
 html { font-family: 'Heebo', system-ui, sans-serif; }
-body { @apply bg-slate-50 text-slate-900 antialiased; }
+body { @apply text-slate-900 antialiased; background-color: #f6f5f2; background-image: radial-gradient(60rem 30rem at 100% -10%, rgba(94,234,212,0.22), transparent 60%), radial-gradient(50rem 28rem at -10% 110%, rgba(196,181,253,0.25), transparent 60%), radial-gradient(40rem 24rem at 50% 120%, rgba(253,186,116,0.16), transparent 60%); background-attachment: fixed; }
 
 /* Technical strings stay LTR inside an RTL page (PRD section 14). */
 .ltr { direction: ltr; unicode-bidi: isolate; text-align: left; }
@@ -16,5 +16,14 @@ code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; 
 .btn-danger { @apply btn bg-rose-600 text-white hover:bg-rose-700; }
 .input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500; }
 .label { @apply block text-xs font-medium text-slate-600 mb-1; }
-.card { @apply rounded-xl border border-slate-200 bg-white shadow-sm; }
+.card { @apply rounded-2xl border border-white/70 bg-white/85 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.12)] backdrop-blur; }
+.tile { @apply card p-4; }
+.hero { @apply rounded-2xl p-5 text-white shadow-[0_18px_40px_-18px_rgba(79,70,229,0.55)]; background-image: linear-gradient(135deg, #6d6cf5 0%, #4fb3d9 55%, #5eead4 100%); }
+.chip { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium; }
+.chip-up { @apply chip bg-emerald-50 text-emerald-700; }
+.chip-down { @apply chip bg-rose-50 text-rose-700; }
+.chip-flat { @apply chip bg-slate-100 text-slate-600; }
+.icon-tile { @apply grid h-10 w-10 shrink-0 place-items-center rounded-xl; }
+.nav-item { @apply flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-slate-700 transition hover:bg-white/70; }
+.nav-item-active { @apply bg-white font-semibold text-indigo-700 shadow-sm ring-1 ring-indigo-100; }
 .badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium; }

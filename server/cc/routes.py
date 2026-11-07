@@ -145,6 +145,13 @@ def overview(workspace_id: Optional[str] = None, p: Principal = Depends(current_
         link_count[pa["project_id"]] = link_count.get(pa["project_id"], 0) + 1
     pid_name = {x["id"]: x["name"] for x in projects}
 
+    asset_provider = {a["id"]: a["provider"] for a in assets}
+    project_providers: dict[str, set[str]] = {}
+    for pa in links:
+        prov = asset_provider.get(pa["asset_id"])
+        if prov:
+            project_providers.setdefault(pa["project_id"], set()).add(prov)
+
     def project_state(pr: Row) -> dict:
         pev = [e for e in events if e.get("project_id") == pr["id"]]
         last_prod = _latest_production(pev)
@@ -152,7 +159,9 @@ def overview(workspace_id: Optional[str] = None, p: Principal = Depends(current_
         last_sess = next((s for s in sorted(sessions, key=lambda s: str(s.get("started_at")), reverse=True) if s["project_id"] == pr["id"]), None)
         tone = "bad" if prod_fail else ("warn" if any(e["result"] == "failure" for e in pev[:10]) else "ok")
         return {**pr, "tone": tone, "last_failure": prod_fail or next((e for e in pev if e["result"] == "failure"), None),
-                "last_session": last_sess, "asset_count": link_count.get(pr["id"], 0)}
+                "last_session": last_sess, "asset_count": link_count.get(pr["id"], 0),
+                "providers": sorted(project_providers.get(pr["id"], ())),
+                "last_activity_at": pev[0]["occurred_at"] if pev else None}
 
     return {
         "projects": [project_state(x) for x in projects],
@@ -162,7 +171,72 @@ def overview(workspace_id: Optional[str] = None, p: Principal = Depends(current_
         "inbox_open": len(inbox),
         "connections": [{**c, "freshness": sync_engine.freshness(c), "secret_enc": None} for c in connections],
         "recent_events": [{**e, "project_name": pid_name.get(e.get("project_id") or "", "")} for e in events[:20]],
+        "stats": _overview_stats(events, assets, list_in_workspaces(p, "usage_entries", workspace_id)),
     }
+
+
+def _overview_stats(events: list[Row], assets: list[Row], usage_rows: list[Row]) -> dict:
+    """Dashboard numbers: activity per day (last 14 days), this week vs the
+    week before, metered usage this month vs last month, assets by provider."""
+    t = now()
+    today = t.replace(hour=0, minute=0, second=0, microsecond=0)
+    days = [(today - timedelta(days=i)) for i in range(13, -1, -1)]
+    by_day = {d.date().isoformat(): {"date": d.date().isoformat(), "total": 0, "failures": 0, "deployments": 0} for d in days}
+    week_ago, two_weeks_ago = today - timedelta(days=6), today - timedelta(days=13)
+    this_week = {"events": 0, "deployments": 0, "failures": 0}
+    prev_week = {"events": 0, "deployments": 0, "failures": 0}
+    for e in events:
+        at = parse_dt(e.get("occurred_at"))
+        if not at or at < two_weeks_ago:
+            continue
+        bucket = this_week if at >= week_ago else prev_week
+        bucket["events"] += 1
+        if e.get("kind") == "deployment":
+            bucket["deployments"] += 1
+        if e.get("result") == "failure":
+            bucket["failures"] += 1
+        day = by_day.get(at.date().isoformat())
+        if day is not None:
+            day["total"] += 1
+            day["failures"] += e.get("result") == "failure"
+            day["deployments"] += e.get("kind") == "deployment"
+
+    # Metered usage: rolling 30 days vs the 30 days before (a calendar month
+    # would compare a few days against a full month early in the month).
+    period_start = today - timedelta(days=29)
+    prev_period_start = today - timedelta(days=59)
+    this_month = {"messages": 0.0, "recipients": 0.0, "ai_requests": 0.0}
+    prev_month = {"messages": 0.0, "recipients": 0.0, "ai_requests": 0.0}
+    usage_by_provider: dict[str, float] = {}
+    usage_daily = {d.date().isoformat(): {"date": d.date().isoformat(), "messages": 0.0, "ai_requests": 0.0} for d in days}
+    for r in usage_rows:
+        at = parse_dt(r.get("occurred_at"))
+        if not at or at < prev_period_start:
+            continue
+        bucket = this_month if at >= period_start else prev_month
+        q = float(r.get("quantity") or 0)
+        metric, prov = r.get("metric"), str(r.get("provider") or "other")
+        key = ""
+        if metric == "messages":
+            key = "messages"
+        elif metric == "recipients":
+            key = "recipients"
+        elif metric == "requests" and prov in ("claude", "anthropic", "gemini", "openai", "ocr"):
+            key = "ai_requests"
+        if key:
+            bucket[key] += q
+            day = usage_daily.get(at.date().isoformat())
+            if day is not None and key in day:
+                day[key] += q
+        if bucket is this_month and metric in ("messages", "requests", "pages"):
+            usage_by_provider[prov] = usage_by_provider.get(prov, 0.0) + q
+
+    by_provider: dict[str, int] = {}
+    for a in assets:
+        by_provider[a["provider"]] = by_provider.get(a["provider"], 0) + 1
+    return {"activity": list(by_day.values()), "this_week": this_week, "prev_week": prev_week,
+            "usage_month": this_month, "usage_prev_month": prev_month, "usage_by_provider": usage_by_provider, "usage_daily": list(usage_daily.values()),
+            "assets_by_provider": by_provider}
 
 
 # --- Projects (PRD sections 3, 9.1) ----------------------------------------

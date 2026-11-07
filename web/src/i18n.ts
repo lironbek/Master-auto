@@ -62,6 +62,22 @@ export function fmtDate(iso?: string | null): string {
   return d.toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+/** Relative time in Hebrew: "לפני 20 דק'", "לפני 3 שעות", "לפני יומיים". */
+export function fmtRel(iso?: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return iso
+  const s = Math.max(0, Math.round((Date.now() - d.getTime()) / 1000))
+  if (s < 60) return 'עכשיו'
+  const m = Math.round(s / 60)
+  if (m < 60) return `לפני ${m} דק'`
+  const h = Math.round(m / 60)
+  if (h < 24) return h === 1 ? 'לפני שעה' : h === 2 ? 'לפני שעתיים' : `לפני ${h} שעות`
+  const days = Math.round(h / 24)
+  if (days < 30) return days === 1 ? 'אתמול' : days === 2 ? 'לפני יומיים' : `לפני ${days} ימים`
+  return d.toLocaleDateString('he-IL', { dateStyle: 'short' })
+}
+
 // --- Control Center -----------------------------------------------------------
 export const provider: Record<string, string> = { github: 'GitHub', vercel: 'Vercel', supabase: 'Supabase', n8n: 'n8n', reporter: 'מדווח חיצוני', anthropic: 'Anthropic', openai: 'OpenAI' }
 export const assetKind: Record<string, string> = { repo: 'ריפוזיטורי', vercel_project: 'פרויקט Vercel', supabase_project: 'פרויקט Supabase', workflow: 'Workflow', service: 'שירות', bot: 'בוט' }

@@ -41,7 +41,7 @@ let page; const errors = [];
   await snap('02-projects')
 
   // External reporter: get a token, then post a heartbeat with fetch from the page (same origin)
-  await page.getByRole('link', { name: 'חיבורים' }).first().click()
+  await page.getByRole('link', { name: 'אינטגרציות' }).first().click()
   await page.getByRole('button', { name: /צור\/חדש טוקן/ }).click()
   const pre = await page.locator('pre').first().textContent()
   const token = /X-Report-Token: ([^"\s]+)/.exec(pre)[1]
@@ -122,7 +122,7 @@ let page; const errors = [];
   await snap('09-agent-run')
 
   // Usage per client: create a client, assign it to the project, see it in the report
-  await page.getByRole('link', { name: 'שימוש לפי לקוח' }).first().click()
+  await page.getByRole('link', { name: 'אנליטיקות' }).first().click()
   await page.getByRole('button', { name: 'ניהול לקוחות' }).click()
   await page.getByLabel('שם הלקוח').fill('לקוח בדיקה')
   await page.getByRole('button', { name: 'הוספת לקוח' }).click()
@@ -141,11 +141,12 @@ let page; const errors = [];
   await snap('13-project-scan')
 
   // Overview populated, security module reachable
-  await page.getByRole('link', { name: 'סקירה' }).first().click()
-  await page.getByText('דורש תשומת לב').waitFor()
+  await page.getByRole('link', { name: 'לוח בקרה' }).first().click()
+  await page.getByText('הפרויקטים והאוטומציות שלך').waitFor()
+  await page.getByText('איפה הוא חי').waitFor()
   await snap('10-overview')
   await page.getByRole('link', { name: 'לוח סקרים' }).first().click()
-  await page.getByText('לוח בקרה').first().waitFor()
+  await page.waitForURL(base + '/security')
   await snap('11-security-dashboard')
 
   await browser.close()
