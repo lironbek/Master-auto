@@ -8,6 +8,7 @@ import { useWorkspace } from '../../workspace'
 
 interface ProviderInfo { label: string; secret_label: string; fields: string[] }
 const fieldLabels: Record<string, string> = { org: 'ארגון GitHub (ריק = החשבון שלי)', repos: 'ריפוזיטוריז לסנכרון (owner/name, מופרדים בפסיק; ריק = הכול)', team_id: 'Team ID ב-Vercel (ריק = חשבון אישי)', base_url: 'כתובת המופע (https://n8n.example.com)' }
+const providerHints: Record<string, string> = { github: 'לסנכרון מספיקה קריאה (Contents, Metadata, Pull requests, Actions). כדי לארכב או למחוק ריפוזיטוריז מעמוד הנכס, הטוקן צריך גם Administration: Read and write.' }
 
 export default function Connections() {
   const { workspaces, current, qs, loading, reload } = useWorkspace()
@@ -57,7 +58,7 @@ export default function Connections() {
             <Field label="שם החשבון (לתצוגה)"><input className="input" value={f.account_label} onChange={e => setF({ ...f, account_label: e.target.value })} placeholder="ארגון קומקס / חשבון פרטי" /></Field>
             <Field label={pinfo?.secret_label ?? 'Token'} hint="נשמר מוצפן בשרת. לא מוצג שוב."><input className="input ltr" type="password" value={f.secret} onChange={e => setF({ ...f, secret: e.target.value })} required autoComplete="off" /></Field>
             {(pinfo?.fields ?? []).map(k => <Field key={k} label={fieldLabels[k] ?? k}><input className="input ltr" value={f.config[k] ?? ''} onChange={e => setF({ ...f, config: { ...f.config, [k]: e.target.value } })} /></Field>)}
-            <div className="md:col-span-2 text-xs text-slate-500">המוצר צורך קריאה בלבד: מטא-דאטה, PR ו-Actions ב-GitHub; פרויקטים ופריסות ב-Vercel; פרויקטים ב-Supabase; Workflows וריצות ב-n8n. אם הטוקן רחב מהנדרש, הפער מתועד.</div>
+            <div className="md:col-span-2 text-xs text-slate-500">המוצר צורך קריאה בלבד: מטא-דאטה, PR ו-Actions ב-GitHub; פרויקטים ופריסות ב-Vercel; פרויקטים ב-Supabase; Workflows וריצות ב-n8n. אם הטוקן רחב מהנדרש, הפער מתועד.{providerHints[f.provider] ? ` ${providerHints[f.provider]}` : ''}</div>
             <div className="md:col-span-2"><button className="btn-primary">בדיקת הרשאה ושמירה</button></div>
           </form>
         </Card>

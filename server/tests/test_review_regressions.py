@@ -309,3 +309,31 @@ def test_asset_owned_by_another_workspace_is_not_duplicated(client):
     assets = client.get("/cc/assets", headers=h).json()
     assert [a["id"] for a in assets] == ["ast_work_seed"]
     assert client.get(f"/cc/inbox?workspace_id={ws_private['id']}", headers=h).json() == []
+
+
+def test_source_delete_requires_admin_confirmation_and_marks_asset(client, monkeypatch):
+    h = _login(client)
+    ws = _workspace(client, h)
+    con = client.post("/cc/connections", json={"workspace_id": ws["id"], "provider": "github", "secret": "ghp_x"}, headers=h).json()
+    client.post(f"/cc/connections/{con['id']}/sync", headers=h)
+    aid = client.get("/cc/assets", headers=h).json()[0]["id"]
+    calls = []
+    FakeConnector.delete_repository = lambda self, full: calls.append(("delete", full)) or {"deleted": True}
+    FakeConnector.archive_repository = lambda self, full: calls.append(("archive", full)) or {"archived": True}
+    # wrong confirmation
+    r = client.post(f"/cc/assets/{aid}/source-action", json={"action": "delete", "confirm": "acme/other"}, headers=h)
+    assert r.status_code == 422 and calls == []
+    # an editor cannot
+    client.post("/auth/users", json={"email": "ed@acme.io", "password": "correct-horse-battery", "role": "developer"}, headers=h)
+    uid = [u for u in client.get("/auth/users", headers=h).json() if u["email"] == "ed@acme.io"][0]["id"]
+    client.post(f"/cc/workspaces/{ws['id']}/members", json={"user_id": uid, "role": "editor"}, headers=h)
+    he = {"Authorization": f"Bearer {client.post('/auth/login', json={'email': 'ed@acme.io', 'password': 'correct-horse-battery'}).json()['token']}"}
+    assert client.post(f"/cc/assets/{aid}/source-action", json={"action": "delete", "confirm": "acme/app"}, headers=he).status_code == 403
+    # archive then delete by the admin
+    assert client.post(f"/cc/assets/{aid}/source-action", json={"action": "archive", "confirm": "acme/app"}, headers=h).json()["archived"]
+    r = client.post(f"/cc/assets/{aid}/source-action", json={"action": "delete", "confirm": "ACME/app"}, headers=h).json()
+    assert r["deleted"] and r["asset"]["state"] == "deleted" and r["asset"]["removed_at"]
+    assert calls == [("archive", "acme/app"), ("delete", "acme/app")]
+    assert [a["id"] for a in client.get("/cc/assets", headers=h).json()] == []   # hidden from the live catalog
+    actions = [e["action"] + ":" + e["decision"] for e in client.get("/pt/audit", headers=h).json()]
+    assert "cc.asset.source_delete:ok" in actions and "cc.asset.source_delete:requested" in actions

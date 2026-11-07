@@ -19,7 +19,7 @@ from . import agents as agent_engine
 from . import sync as sync_engine
 from . import usage as usage_engine
 from .connectors import PROVIDERS, ConfigError, ConnectorError, build, validate_config
-from .secrets import SecretsUnavailable, encrypt, mask
+from .secrets import SecretsUnavailable, decrypt, encrypt, mask
 from .service import (
     WS_ADMIN,
     WS_EDITOR,
@@ -486,6 +486,53 @@ def patch_asset(asset_id: str, body: AssetPatch, p: Principal = Depends(current_
     row = _store().update("cc_assets", asset_id, organization_id=p.organization_id, patch=patch)
     audit(p, "cc.asset.update", detail=f"{asset_id} {','.join(patch)}")
     return row
+
+
+class SourceActionIn(BaseModel):
+    action: str                      # archive | delete
+    confirm: str = ""                # the asset's full name, typed by the admin
+
+
+@router.post("/assets/{asset_id}/source-action")
+def asset_source_action(asset_id: str, body: SourceActionIn, p: Principal = Depends(current_principal)):
+    """Act on the asset *at its provider* (archive or delete a GitHub repository).
+    Destructive by design, so: workspace admin only, the full name must be typed
+    back, the connection's token must have administration rights, and the
+    action is written to the audit log before and after."""
+    store, org = _store(), p.organization_id
+    a = get_in_workspace(p, "cc_assets", asset_id, minimum=WS_ADMIN)
+    if body.action not in ("archive", "delete"):
+        raise HTTPException(status_code=422, detail="action must be archive|delete")
+    if a["provider"] != "github" or a["kind"] != "repo":
+        raise HTTPException(status_code=422, detail="only GitHub repositories support source actions for now")
+    if body.confirm.strip().lower() != a["name"].strip().lower():
+        raise HTTPException(status_code=422, detail="type the repository's full name to confirm")
+    conn = store.get("connections", a["connection_id"], organization_id=org) if a.get("connection_id") else None
+    if not conn:
+        # fall back to any live GitHub connection in the workspace
+        conn = next((c for c in store.list("connections", organization_id=org, workspace_id=a["workspace_id"], provider="github")
+                     if c.get("secret_enc") and c["status"] != "disconnected"), None)
+    if not conn or not conn.get("secret_enc"):
+        raise HTTPException(status_code=409, detail="no live GitHub connection with a token in this workspace")
+    try:
+        secret = decrypt(conn["secret_enc"])
+    except SecretsUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    audit(p, f"cc.asset.source_{body.action}", decision="requested", detail=f"{asset_id} {a['name']}")
+    connector = build("github", secret, conn.get("config") or {})
+    try:
+        result = connector.delete_repository(a["name"]) if body.action == "delete" else connector.archive_repository(a["name"])
+    except ConnectorError as exc:
+        audit(p, f"cc.asset.source_{body.action}", decision="failed", detail=f"{asset_id} {exc}")
+        raise HTTPException(status_code=409, detail=str(exc))
+    if body.action == "delete":
+        row = store.update("cc_assets", asset_id, organization_id=org, patch={"removed_at": iso(), "state": "deleted", "deleted_by": p.actor})
+        for i in store.list("inbox_items", organization_id=org, workspace_id=a["workspace_id"], asset_id=asset_id, status="open"):
+            store.update("inbox_items", i["id"], organization_id=org, patch={"status": "resolved"})
+    else:
+        row = store.update("cc_assets", asset_id, organization_id=org, patch={"state": "archived", "archived_by": p.actor})
+    audit(p, f"cc.asset.source_{body.action}", decision="ok", detail=f"{asset_id} {a['name']}")
+    return {"ok": True, "action": body.action, "asset": row, **result}
 
 
 @router.get("/inbox")

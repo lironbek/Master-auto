@@ -32,6 +32,30 @@ class GitHubConnector:
             scopes = r.headers.get("x-oauth-scopes", "")
             return {"account": me.get("login", ""), "scopes": scopes, "capabilities": ["inventory", "pull_requests", "actions"]}
 
+    # --- destructive actions (PRD: explicit capability, never part of sync) ----
+
+    def archive_repository(self, full_name: str) -> dict[str, Any]:
+        """Archive a repository (reversible from GitHub). Needs a token with
+        Administration: write on the repository."""
+        with self._client() as c:
+            r = c.patch(f"{API}/repos/{full_name}", json={"archived": True})
+            if r.status_code in (401, 403, 404):
+                raise ConnectorError("the GitHub token cannot administer this repository (needs Administration: write)", status="reauth")
+            if r.status_code >= 400:
+                raise classify_http_error(r)
+            return {"archived": bool(r.json().get("archived"))}
+
+    def delete_repository(self, full_name: str) -> dict[str, Any]:
+        """Delete a repository. Irreversible. Needs a token with the
+        delete_repo scope (classic) or Administration: write (fine-grained)."""
+        with self._client() as c:
+            r = c.delete(f"{API}/repos/{full_name}")
+            if r.status_code in (401, 403, 404):
+                raise ConnectorError("the GitHub token cannot delete this repository (needs delete_repo / Administration: write)", status="reauth")
+            if r.status_code >= 400:
+                raise classify_http_error(r)
+            return {"deleted": True}
+
     def _list_repos(self, c, res: SyncResult) -> list[dict]:
         if self.repos:
             out = []
