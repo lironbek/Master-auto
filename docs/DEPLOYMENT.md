@@ -35,3 +35,11 @@ Vercel Authentication כבוי בשני הפרויקטים: האפליקציה �
 אוטומטית את שני הפרויקטים. העותק הקודם (`lironbek/cars` תחת `control-center/`, פרויקטי
 Vercel `control-center` / `control-center-api`) נשאר להיסטוריה בלבד ואפשר למחוק אותו.
 הספרייה `pt/` ב-`cars` והפרויקט `pt` ב-Vercel הם הגרסה הישנה של המודול.
+
+## תקלה שתוקנה 7.11.2026: "Internal Server Error" אחרי הכניסה
+
+הסיבה: טבלאות מרכז הבקרה (מיגרציות 0003–0005) הוחלו דרך קונסולת Supabase, ולכן
+היו בבעלות `postgres` ולא `pt_app`. עם RLS מופעל וללא policies, תפקיד שאינו הבעלים
+נחסם לגמרי (`permission denied for table workspaces`). התיקון: העברת הבעלות על כל
+הטבלאות והרצפים ל-`pt_app`. כלל: מיגרציות מורצות ע"י השרת (auto-migrate כ-`pt_app`)
+או, אם מריצים ידנית בקונסולה, מסיימים ב-`alter table <t> owner to pt_app`.
