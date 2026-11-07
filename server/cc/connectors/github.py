@@ -158,6 +158,22 @@ class GitHubConnector:
             add("info", "הריפו מאורכב", "")
         return f
 
+    def list_files(self, full_name: str) -> tuple[str, list[tuple[str, int]]]:
+        """(default_branch, [(path, size)]) for the code-review scan."""
+        with self._client() as c:
+            r = c.get(f"{API}/repos/{full_name}")
+            if r.status_code >= 400:
+                raise classify_http_error(r)
+            branch = r.json().get("default_branch", "main")
+            r = c.get(f"{API}/repos/{full_name}/git/trees/{branch}", params={"recursive": "1"})
+            if r.status_code >= 400:
+                raise classify_http_error(r)
+            return branch, [(t["path"], int(t.get("size") or 0)) for t in r.json().get("tree", []) if t.get("type") == "blob"]
+
+    def read_file(self, full_name: str, path: str, ref: str) -> str:
+        with self._client() as c:
+            return self._text_file(c, full_name, path, ref)
+
     def _json_file(self, c, full_name: str, path: str, ref: str) -> dict:
         try:
             import json as _json

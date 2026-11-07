@@ -24,13 +24,15 @@ export default function Assets() {
 
   // Direct, audited write-back to GitHub: archive or delete a repository. The
   // full name is typed as confirmation; the server re-checks admin role + token.
+  const actionable = (a: Asset) => (a.provider === 'github' && a.kind === 'repo') || (a.provider === 'vercel' && a.kind === 'vercel_project') || (a.provider === 'supabase' && a.kind === 'supabase_project')
+  const softLabel = (a: Asset) => a.provider === 'github' ? 'ארכוב' : 'השהיה'
   async function sourceAction(a: Asset, action: 'archive' | 'delete') {
-    const typed = window.prompt(`${action === 'delete' ? 'מחיקה סופית' : 'ארכוב'} של ${a.name} ב-GitHub.\nהקלד את השם המלא לאישור:`)
+    const typed = window.prompt(`${action === 'delete' ? 'מחיקה סופית' : softLabel(a)} של ${a.name} ב-${t(provider, a.provider)}.\nהקלד את השם המלא לאישור:`)
     if (typed === null) return
     setBusy(a.id); setError(null); setNote('')
     try {
       await api.post(`/cc/assets/${a.id}/source-action`, { action, confirm: typed })
-      setNote(action === 'delete' ? `${a.name} נמחק מ-GitHub ונרשם ביומן הביקורת.` : `${a.name} אורכב ב-GitHub.`)
+      setNote(action === 'delete' ? `${a.name} נמחק מ-${t(provider, a.provider)} ונרשם ביומן הביקורת.` : `${a.name} ${a.provider === 'github' ? 'אורכב' : 'הושהה'} ב-${t(provider, a.provider)}.`)
       load()
     } catch (err) { setError(err) } finally { setBusy(null) }
   }
@@ -48,7 +50,7 @@ export default function Assets() {
       </div>
       <ErrorBox error={error} />
       {note && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900" role="status">{note}</div>}
-      {isAdmin && <p className="text-xs text-slate-500">ריפוזיטוריז של GitHub אפשר לארכב או למחוק ישירות מכאן (עמודת "פעולות"). הפעולה דורשת הקלדת השם המלא, טוקן חיבור עם Administration: write, ונרשמת ביומן הביקורת.</p>}
+      {isAdmin && <p className="text-xs text-slate-500">ריפוזיטוריז של GitHub (ארכוב / מחיקה), פרויקטי Vercel ו-Supabase (השהיה / מחיקה) ניתנים לפעולה ישירות מכאן (עמודת "פעולות"). הפעולה דורשת הקלדת השם המלא, טוקן חיבור עם הרשאת ניהול, ונרשמת ביומן הביקורת.</p>}
       <Card>
         {!shown ? <Spinner /> : shown.length === 0 ? <Empty>אין נכסים. חבר ספק במסך "חיבורים" והרץ סנכרון.</Empty> : (
           <Table head={['נכס', 'מה הוא עושה', 'איפה הוא חי', 'סביבה', 'מצב', 'פרויקט', 'עדכון אחרון', 'פעולות']}>
@@ -61,8 +63,8 @@ export default function Assets() {
                 <td className="px-3 py-2 text-xs"><bdi>{a.state || '—'}</bdi></td>
                 <td className="px-3 py-2 text-xs">{a.project_ids?.length ? a.project_ids.map(p => <Link key={p} to={`/projects/${p}`} className="ml-1 text-indigo-700">{projects[p] ?? p}</Link>) : <span className="badge bg-indigo-100 text-indigo-800">טרם שויך</span>}</td>
                 <td className="px-3 py-2 text-xs">{fmtDate(a.source_updated_at || a.last_seen_at)}</td>
-                <td className="px-3 py-2 text-xs whitespace-nowrap">{isAdmin && a.provider === 'github' && a.kind === 'repo' && !a.removed_at ? (
-                  <span className="flex gap-2"><button className="text-slate-600 hover:underline" disabled={busy === a.id} onClick={() => sourceAction(a, 'archive')}>ארכוב</button><button className="text-rose-700 hover:underline" disabled={busy === a.id} onClick={() => sourceAction(a, 'delete')}>{busy === a.id ? '…' : 'מחיקה'}</button></span>
+                <td className="px-3 py-2 text-xs whitespace-nowrap">{isAdmin && actionable(a) && !a.removed_at ? (
+                  <span className="flex gap-2"><button className="text-slate-600 hover:underline" disabled={busy === a.id} onClick={() => sourceAction(a, 'archive')}>{softLabel(a)}</button><button className="text-rose-700 hover:underline" disabled={busy === a.id} onClick={() => sourceAction(a, 'delete')}>{busy === a.id ? '…' : 'מחיקה'}</button></span>
                 ) : '—'}</td>
               </tr>
             ))}

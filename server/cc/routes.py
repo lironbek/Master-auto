@@ -257,11 +257,24 @@ def refresh_profile(project_id: str, p: Principal = Depends(current_principal)):
 
 
 @router.post("/projects/{project_id}/scan")
-def scan_project(project_id: str, p: Principal = Depends(current_principal)):
-    """Health scan: deterministic findings from GitHub / Vercel / Supabase metadata."""
+def scan_project(project_id: str, kind: str = "health", p: Principal = Depends(current_principal)):
+    """kind=health: deterministic findings from GitHub / Vercel / Supabase metadata.
+    kind=code: Claude reviews the repositories' most relevant source files."""
     pr = get_in_workspace(p, "cc_projects", project_id, minimum=WS_EDITOR)
-    row = profile_engine.run_scan(_store(), p.organization_id, pr, actor=p.actor)
-    audit(p, "cc.project.scan", decision=row["grade"], detail=f"{project_id} {row['id']} {row['counts']}")
+    if kind == "code":
+        try:
+            row = profile_engine.run_code_scan(_store(), p.organization_id, pr, actor=p.actor)
+        except ConnectorError as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
+    elif kind == "health":
+        row = profile_engine.run_scan(_store(), p.organization_id, pr, actor=p.actor)
+    else:
+        raise HTTPException(status_code=422, detail="kind must be health|code")
+    audit(p, "cc.project.scan", decision=row.get("grade") or row["status"], detail=f"{project_id} {kind} {row['id']} {row['counts']}")
+    if row.get("grade") == "C":
+        from . import notify
+        notify.send(store=_store(), org_id=p.organization_id, workspace_id=pr["workspace_id"], kind="scan",
+                    title=f"סריקת {kind} של {pr['name']}: ציון C", message=f"{row['counts']} · {row.get('summary', {}).get('text', '')[:300]}")
     return row
 
 
@@ -539,25 +552,29 @@ def asset_source_action(asset_id: str, body: SourceActionIn, p: Principal = Depe
     a = get_in_workspace(p, "cc_assets", asset_id, minimum=WS_ADMIN)
     if body.action not in ("archive", "delete"):
         raise HTTPException(status_code=422, detail="action must be archive|delete")
-    if a["provider"] != "github" or a["kind"] != "repo":
-        raise HTTPException(status_code=422, detail="only GitHub repositories support source actions for now")
+    supported = {("github", "repo"), ("vercel", "vercel_project"), ("supabase", "supabase_project")}
+    if (a["provider"], a["kind"]) not in supported:
+        raise HTTPException(status_code=422, detail="source actions are supported for GitHub repositories, Vercel projects and Supabase projects")
     if body.confirm.strip().lower() != a["name"].strip().lower():
-        raise HTTPException(status_code=422, detail="type the repository's full name to confirm")
+        raise HTTPException(status_code=422, detail="type the asset's full name to confirm")
     conn = store.get("connections", a["connection_id"], organization_id=org) if a.get("connection_id") else None
-    if not conn:
-        # fall back to any live GitHub connection in the workspace
-        conn = next((c for c in store.list("connections", organization_id=org, workspace_id=a["workspace_id"], provider="github")
+    if not conn or not conn.get("secret_enc"):
+        # fall back to any live connection of the provider in the workspace
+        conn = next((c for c in store.list("connections", organization_id=org, workspace_id=a["workspace_id"], provider=a["provider"])
                      if c.get("secret_enc") and c["status"] != "disconnected"), None)
     if not conn or not conn.get("secret_enc"):
-        raise HTTPException(status_code=409, detail="no live GitHub connection with a token in this workspace")
+        raise HTTPException(status_code=409, detail=f"no live {a['provider']} connection with a token in this workspace")
     try:
         secret = decrypt(conn["secret_enc"])
     except SecretsUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc))
     audit(p, f"cc.asset.source_{body.action}", decision="requested", detail=f"{asset_id} {a['name']}")
-    connector = build("github", secret, conn.get("config") or {})
+    connector = build(a["provider"], secret, conn.get("config") or {})
     try:
-        result = connector.delete_repository(a["name"]) if body.action == "delete" else connector.archive_repository(a["name"])
+        if a["provider"] == "github":
+            result = connector.delete_repository(a["name"]) if body.action == "delete" else connector.archive_repository(a["name"])
+        else:   # vercel / supabase: 'archive' means pause (reversible from the provider's dashboard)
+            result = connector.delete_project(a["external_id"]) if body.action == "delete" else connector.pause_project(a["external_id"])
     except ConnectorError as exc:
         audit(p, f"cc.asset.source_{body.action}", decision="failed", detail=f"{asset_id} {exc}")
         raise HTTPException(status_code=409, detail=str(exc))
@@ -566,7 +583,7 @@ def asset_source_action(asset_id: str, body: SourceActionIn, p: Principal = Depe
         for i in store.list("inbox_items", organization_id=org, workspace_id=a["workspace_id"], asset_id=asset_id, status="open"):
             store.update("inbox_items", i["id"], organization_id=org, patch={"status": "resolved"})
     else:
-        row = store.update("cc_assets", asset_id, organization_id=org, patch={"state": "archived", "archived_by": p.actor})
+        row = store.update("cc_assets", asset_id, organization_id=org, patch={"state": "archived" if a["provider"] == "github" else "paused", "archived_by": p.actor})
     audit(p, f"cc.asset.source_{body.action}", decision="ok", detail=f"{asset_id} {a['name']}")
     return {"ok": True, "action": body.action, "asset": row, **result}
 

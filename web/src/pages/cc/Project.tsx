@@ -55,9 +55,9 @@ export default function CcProject() {
     setBusy('profile'); setError(null)
     try { await api.post(`/cc/projects/${id}/profile`); await load() } catch (err) { setError(err) } finally { setBusy(null) }
   }
-  async function runScan() {
+  async function runScan(kind: 'health' | 'code' = 'health') {
     setBusy('scan'); setError(null)
-    try { const s = await api.post<ProjectScan>(`/cc/projects/${id}/scan`); setScan(s); await load() } catch (err) { setError(err) } finally { setBusy(null) }
+    try { const s = await api.post<ProjectScan>(`/cc/projects/${id}/scan?kind=${kind}`); setScan(s); await load() } catch (err) { setError(err) } finally { setBusy(null) }
   }
   async function openScan(scanId: string) {
     try { setScan(await api.get<ProjectScan>(`/cc/scans/${scanId}`)) } catch (err) { setError(err) }
@@ -176,16 +176,20 @@ export default function CcProject() {
 
       {tab === 'scans' && (
         <div className="space-y-4">
-          <Card title="סריקת תקינות" actions={<button className="btn-primary" disabled={busy !== null} onClick={runScan}>{busy === 'scan' ? 'סורק…' : 'הרץ סריקה'}</button>}>
-            <p className="text-sm text-slate-600">הסריקה בודקת כל נכס של הפרויקט דרך החיבורים (קריאה בלבד): הגנת ענף, התראות Dependabot / סודות / קוד, קובצי env בריפו, בדיקות ו-CI, lockfile, פריסת ייצור אחרונה, סודות שמורים כ-plain ב-Vercel, טבלאות ללא RLS. כל סריקה נשמרת כדי להשוות לאורך זמן.</p>
-            {d.project.last_scan_grade && <div className="mt-3 text-sm">ציון אחרון: <span className={`badge ${gradeTone[d.project.last_scan_grade] ?? 'bg-slate-100'}`}>{d.project.last_scan_grade}</span> <span className="text-xs text-slate-400">{fmtDate(d.project.last_scan_at)}</span></div>}
+          <Card title="סריקות" actions={<span className="flex gap-2"><button className="btn-primary" disabled={busy !== null} onClick={() => runScan('health')}>{busy === 'scan' ? 'סורק…' : 'סריקת תקינות'}</button><button className="btn-secondary" disabled={busy !== null} onClick={() => runScan('code')}>סריקת קוד (Claude)</button></span>}>
+            <p className="text-sm text-slate-600"><b>סריקת תקינות</b> בודקת כל נכס דרך החיבורים (קריאה בלבד): הגנת ענף, התראות Dependabot / סודות / קוד, קובצי env בריפו, בדיקות ו-CI, lockfile, פריסת ייצור אחרונה, סודות שמורים כ-plain ב-Vercel, טבלאות ללא RLS. <b>סריקת קוד</b> שולחת ל-Claude עד 25 קבצי מקור רלוונטיים לאבטחה מכל ריפו (אחרי השחרת סודות) ומחזירה ממצאים עם קובץ ושורה; דורשת מפתח Anthropic (מפתח ברירת המחדל של הפרויקט או מפתח השרת) והשימוש נזקף ללקוח של הפרויקט. כל סריקה נשמרת כדי להשוות לאורך זמן.</p>
+            <div className="mt-3 flex flex-wrap gap-4 text-sm">
+              {d.project.last_scan_grade && <span>תקינות: <span className={`badge ${gradeTone[d.project.last_scan_grade] ?? 'bg-slate-100'}`}>{d.project.last_scan_grade}</span> <span className="text-xs text-slate-400">{fmtDate(d.project.last_scan_at)}</span></span>}
+              {d.project.last_code_scan_grade && <span>קוד: <span className={`badge ${gradeTone[d.project.last_code_scan_grade] ?? 'bg-slate-100'}`}>{d.project.last_code_scan_grade}</span> <span className="text-xs text-slate-400">{fmtDate(d.project.last_code_scan_at)}</span></span>}
+            </div>
             <p className="mt-3 text-xs text-slate-500">סריקת אבטחה של האתר החי (כותרות, cookies, היקף מאושר) נעשית במודול <button className="text-indigo-700 underline" onClick={() => setTab('security')}>סקרי אבטחה</button>.</p>
           </Card>
           {(scan ?? d.last_scan) && (() => { const s = scan ?? d.last_scan!; return (
-            <Card title={`ממצאים · ${fmtDate(s.created_at)}`} actions={<span className={`badge ${gradeTone[s.grade] ?? 'bg-slate-100'}`}>ציון {s.grade}</span>}>
-              <div className="mb-3 flex flex-wrap gap-2 text-xs">{Object.entries(s.counts ?? {}).map(([k, v]) => <span key={k} className={`badge ${sevTone[k]}`}>{sevLabel[k]} {v}</span>)}<span className="badge bg-slate-100">{s.assets ?? 0} נכסים</span></div>
+            <Card title={`ממצאים · ${s.kind === 'code' ? 'סריקת קוד' : 'סריקת תקינות'} · ${fmtDate(s.created_at)}`} actions={s.grade ? <span className={`badge ${gradeTone[s.grade] ?? 'bg-slate-100'}`}>ציון {s.grade}</span> : <span className="badge bg-rose-100 text-rose-800">נכשלה</span>}>
+              <div className="mb-3 flex flex-wrap gap-2 text-xs">{Object.entries(s.counts ?? {}).map(([k, v]) => <span key={k} className={`badge ${sevTone[k]}`}>{sevLabel[k]} {v}</span>)}<span className="badge bg-slate-100">{s.assets ?? 0} נכסים</span>{s.files ? <span className="badge bg-slate-100">{s.files} קבצים</span> : null}{s.model ? <span className="mono badge bg-slate-100">{s.model}</span> : null}</div>
+              {s.summary?.text && s.kind === 'code' && <pre className="mb-3 whitespace-pre-wrap text-sm text-slate-700">{s.summary.text}</pre>}
               {!s.findings?.length ? <Empty>אין ממצאים.</Empty> : (
-                <ul className="divide-y divide-slate-100">{s.findings.map((f, i) => <li key={i} className="py-2 text-sm"><div className="flex flex-wrap items-center gap-2"><span className={`badge ${sevTone[f.severity]}`}>{sevLabel[f.severity]}</span><span className="font-medium">{f.title}</span><span className="text-xs text-slate-400">{f.asset_name} · {t(provider, f.source)}</span></div>{f.detail && <div className="text-xs text-slate-600">{f.detail}</div>}{f.fix && <div className="text-xs text-emerald-800">תיקון: {f.fix}</div>}</li>)}</ul>
+                <ul className="divide-y divide-slate-100">{s.findings.map((f, i) => <li key={i} className="py-2 text-sm"><div className="flex flex-wrap items-center gap-2"><span className={`badge ${sevTone[f.severity]}`}>{sevLabel[f.severity]}</span><span className="font-medium">{f.title}</span><span className="text-xs text-slate-400">{f.asset_name}{f.file ? <> · <span className="mono">{f.file}{f.line ? `:${f.line}` : ''}</span></> : ` · ${t(provider, f.source)}`}</span></div>{f.detail && <div className="text-xs text-slate-600">{f.detail}</div>}{f.fix && <div className="text-xs text-emerald-800">תיקון: {f.fix}</div>}</li>)}</ul>
               )}
             </Card>
           ) })()}

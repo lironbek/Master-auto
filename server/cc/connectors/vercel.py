@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from .base import AssetRecord, EventRecord, SyncResult, classify_http_error, make_client
+from .base import AssetRecord, ConnectorError, EventRecord, SyncResult, classify_http_error, make_client
 
 API = "https://api.vercel.com"
 MAX_PAGES = 10
@@ -41,6 +41,26 @@ class VercelConnector:
                 raise classify_http_error(r)
             u = r.json().get("user", {})
             return {"account": u.get("username", ""), "capabilities": ["inventory", "deployments"]}
+
+    # --- destructive actions (explicit capability, never part of sync) --------
+
+    def pause_project(self, project_id: str) -> dict[str, Any]:
+        with self._client() as c:
+            r = c.post(f"{API}/v1/projects/{project_id}/pause", params=self._q())
+            if r.status_code in (401, 403, 404):
+                raise ConnectorError("the Vercel token cannot pause this project", status="reauth")
+            if r.status_code >= 400:
+                raise classify_http_error(r)
+            return {"paused": True}
+
+    def delete_project(self, project_id: str) -> dict[str, Any]:
+        with self._client() as c:
+            r = c.delete(f"{API}/v9/projects/{project_id}", params=self._q())
+            if r.status_code in (401, 403, 404):
+                raise ConnectorError("the Vercel token cannot delete this project", status="reauth")
+            if r.status_code >= 400:
+                raise classify_http_error(r)
+            return {"deleted": True}
 
     def project_profile(self, project_id: str) -> dict[str, Any]:
         """How the Vercel project is set up: framework, root dir, env var NAMES

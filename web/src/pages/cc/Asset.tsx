@@ -27,16 +27,18 @@ export default function AssetPage() {
     try { await api.patch(`/cc/assets/${id}`, { description: fd.get('description'), environment: fd.get('environment'), importance: fd.get('importance') }); load() } catch (err) { setError(err) }
   }
   async function sourceAction(action: 'archive' | 'delete') {
-    const verb = action === 'delete' ? 'למחוק לצמיתות' : 'לארכב'
-    if (!window.confirm(`${verb} את ${a.name} ב-GitHub? ${action === 'delete' ? 'אין דרך חזרה.' : 'ניתן לבטל מ-GitHub.'}`)) return
+    const verb = action === 'delete' ? 'למחוק לצמיתות' : (a.provider === 'github' ? 'לארכב' : 'להשהות')
+    if (!window.confirm(`${verb} את ${a.name} ב-${t(provider, a.provider)}? ${action === 'delete' ? 'אין דרך חזרה.' : 'ניתן לבטל מהספק.'}`)) return
     setBusy(action); setError(null); setNote('')
     try {
       const r = await api.post<{ action: string }>(`/cc/assets/${id}/source-action`, { action, confirm })
-      setNote(r.action === 'delete' ? `הריפוזיטורי ${a.name} נמחק מ-GitHub ונרשם ביומן הביקורת.` : `הריפוזיטורי ${a.name} אורכב ב-GitHub.`)
+      setNote(r.action === 'delete' ? `${a.name} נמחק מ-${t(provider, a.provider)} ונרשם ביומן הביקורת.` : `${a.name} ${a.provider === 'github' ? 'אורכב' : 'הושהה'} ב-${t(provider, a.provider)}.`)
       setConfirm(''); load()
     } catch (err) { setError(err) } finally { setBusy(null) }
   }
-  const canAct = a.provider === 'github' && a.kind === 'repo' && !a.removed_at && me?.user.role === 'org_admin'
+  const actionable = (a.provider === 'github' && a.kind === 'repo') || (a.provider === 'vercel' && a.kind === 'vercel_project') || (a.provider === 'supabase' && a.kind === 'supabase_project')
+  const canAct = actionable && !a.removed_at && me?.user.role === 'org_admin'
+  const soft = a.provider === 'github' ? 'ארכוב' : 'השהיה'
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -63,12 +65,12 @@ export default function AssetPage() {
           </Card>
           {d.connection && <Card title="חיבור המקור"><div className="text-sm">{t(provider, d.connection.provider)} · {d.connection.account_label} <ConnPill value={d.connection.status} /></div><div className="mt-1 text-xs text-slate-500">סנכרון אחרון {fmtDate(d.connection.last_sync_at)}</div><Link to="/connections" className="mt-2 inline-block text-xs text-indigo-700">פרטי חיבור</Link></Card>}
           {canAct && (
-            <Card title="פעולות על המקור (GitHub)" className="border-rose-200">
-              <p className="text-xs text-slate-600">ארכוב הופך את הריפוזיטורי לקריאה בלבד וניתן לביטול מ-GitHub. מחיקה היא סופית. הטוקן של החיבור חייב הרשאת Administration: write (או delete_repo). כל פעולה נרשמת ביומן הביקורת.</p>
+            <Card title={`פעולות על המקור (${t(provider, a.provider)})`} className="border-rose-200">
+              <p className="text-xs text-slate-600">{a.provider === 'github' ? 'ארכוב הופך את הריפוזיטורי לקריאה בלבד וניתן לביטול מ-GitHub. הטוקן חייב הרשאת Administration: write.' : 'השהיה עוצרת את הפרויקט וניתנת לביטול מלוח הבקרה של הספק.'} מחיקה היא סופית. כל פעולה נרשמת ביומן הביקורת.</p>
               <Field label={`הקלד את השם המלא לאישור: ${a.name}`}><input className="input ltr" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder={a.name} autoComplete="off" /></Field>
               <div className="mt-2 flex gap-2">
-                <button className="btn-secondary" disabled={busy !== null || confirm.trim().toLowerCase() !== a.name.toLowerCase()} onClick={() => sourceAction('archive')}>{busy === 'archive' ? 'מארכב…' : 'ארכוב ב-GitHub'}</button>
-                <button className="btn-secondary !border-rose-300 !text-rose-700" disabled={busy !== null || confirm.trim().toLowerCase() !== a.name.toLowerCase()} onClick={() => sourceAction('delete')}>{busy === 'delete' ? 'מוחק…' : 'מחיקה מ-GitHub'}</button>
+                <button className="btn-secondary" disabled={busy !== null || confirm.trim().toLowerCase() !== a.name.toLowerCase()} onClick={() => sourceAction('archive')}>{busy === 'archive' ? '…' : `${soft} ב-${t(provider, a.provider)}`}</button>
+                <button className="btn-secondary !border-rose-300 !text-rose-700" disabled={busy !== null || confirm.trim().toLowerCase() !== a.name.toLowerCase()} onClick={() => sourceAction('delete')}>{busy === 'delete' ? 'מוחק…' : `מחיקה מ-${t(provider, a.provider)}`}</button>
               </div>
             </Card>
           )}

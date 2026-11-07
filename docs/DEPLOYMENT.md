@@ -18,6 +18,11 @@ Vercel Authentication כבוי בשני הפרויקטים: האפליקציה �
 | `CC_SECRET_KEY` | מוגדר | מפתח Fernet להצפנת סודות חיבורים ומפתחות ספק |
 | `PT_ORG_HMAC_KEY` | מוגדר | מפתח חדש (7.11.2026); טביעות אצבע של ראיות ישנות מהפריסה הקודמת לא יתאימו לחדשות |
 | `CRON_SECRET` | מוגדר | מאמת את ה-cron `*/15 * * * *` ל-`/cc/sync/all` |
+| `ANTHROPIC_API_KEY` | אופציונלי | מפתח ברירת מחדל לריצות סוכנים ולסריקות קוד כשלפרויקט אין מפתח משלו |
+| `CC_SCAN_MODEL` | אופציונלי | מודל לסריקות קוד (ברירת מחדל claude-sonnet-5-5) |
+| `CC_ALERT_WEBHOOK_URL` | אופציונלי | יעד POST להתראות ולסריקות עם ציון C |
+| `RESEND_API_KEY`, `CC_ALERT_EMAIL_TO`, `CC_ALERT_EMAIL_FROM` | אופציונלי | התראות באימייל דרך Resend |
+| `CC_PUBLIC_URL` | אופציונלי | קישור חזרה למערכת בתוך ההתראות |
 
 אומת: `GET /healthz` מחזיר `"storage":"postgres"`, `"secrets":true` ו-`migrations.ran=true`,
 וגם `GET /api/healthz` דרך ה-UI. סיסמת תפקיד ה-DB `pt_app` סובבה ב-7.11.2026 ועודכנה

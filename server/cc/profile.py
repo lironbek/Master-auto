@@ -126,6 +126,55 @@ def summarize(project: Row, assets: list[Row]) -> dict[str, Any]:
             "tests_ratio": f"{tests}/{len(repos)}" if repos else "", "ci_ratio": f"{ci}/{len(repos)}" if repos else ""}
 
 
+def run_code_scan(store, org_id: str, project: Row, *, actor: str) -> Row:
+    """Code review of every repository of the project by Claude (bounded file
+    selection, secrets redacted). Needs an Anthropic key: the project's default
+    key or ANTHROPIC_API_KEY. Usage is metered to the project's client."""
+    from . import codescan
+    from .usage import UsageEntryIn, record
+
+    api_key, key_id, model = codescan.resolve_key(store, org_id, project)
+    if not api_key:
+        raise ConnectorError("no Anthropic key: set the project's default key or ANTHROPIC_API_KEY", status="reauth")
+    repos = [a for a in project_assets(store, org_id, project["id"]) if a["provider"] == "github" and a["kind"] == "repo"]
+    findings: list[dict[str, Any]] = []
+    summaries: list[str] = []
+    files_total = 0
+    usage_total = {"input": 0, "output": 0}
+    errors: list[str] = []
+    for a in repos:
+        conn, err = _connector_for(store, org_id, a)
+        if not conn:
+            errors.append(f"{a['name']}: {err}"); continue
+        try:
+            _, files = codescan.gather(conn, a["name"])
+            if not files:
+                errors.append(f"{a['name']}: no reviewable source files"); continue
+            review, usage = codescan.review_with_claude(api_key, model, a["name"], files)
+        except Exception as exc:
+            errors.append(f"{a['name']}: {type(exc).__name__}: {exc}"[:200]); continue
+        files_total += len(files)
+        usage_total["input"] += usage["input"]; usage_total["output"] += usage["output"]
+        summaries.append(f"{a['name']}: {review['summary']}")
+        findings.extend({**f, "asset_id": a["id"], "asset_name": a["name"]} for f in review["findings"])
+    if usage_total["input"] or usage_total["output"]:
+        for metric, qty in (("requests", len(summaries)), ("tokens_in", usage_total["input"]), ("tokens_out", usage_total["output"])):
+            record(store, org_id, project["workspace_id"],
+                   UsageEntryIn(provider="claude", metric=metric, quantity=qty, interface="scan:code", project_id=project["id"], model=model),
+                   client_id=project.get("client_id"), source="scan")
+    findings.sort(key=lambda f: (SEVERITY_ORDER.get(f["severity"], 9), f["asset_name"]))
+    counts = {k: sum(1 for f in findings if f["severity"] == k) for k in SEVERITY_ORDER}
+    grade = "A" if not counts["high"] and not counts["medium"] else ("B" if not counts["high"] else "C")
+    row = {"id": new_id("scan"), "organization_id": org_id, "workspace_id": project["workspace_id"], "project_id": project["id"],
+           "kind": "code", "status": "completed" if summaries else "failed", "grade": grade if summaries else "", "created_at": iso(), "finished_at": iso(),
+           "actor": actor, "findings": findings, "counts": counts, "assets": len(repos), "files": files_total, "model": model, "key_id": key_id,
+           "usage": usage_total, "summary": {"text": "\n".join(summaries) or "\n".join(errors), "errors": errors}}
+    store.insert("project_scans", row)
+    if summaries:
+        store.update("cc_projects", project["id"], organization_id=org_id, patch={"last_code_scan_id": row["id"], "last_code_scan_grade": grade, "last_code_scan_at": row["created_at"]})
+    return row
+
+
 def run_scan(store, org_id: str, project: Row, *, actor: str, refresh_profile: bool = True) -> Row:
     """Health scan over all the project's assets; stores and returns the scan row."""
     assets = project_assets(store, org_id, project["id"])

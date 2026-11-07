@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-from .base import AssetRecord, SyncResult, classify_http_error, make_client
+from .base import AssetRecord, ConnectorError, SyncResult, classify_http_error, make_client
 
 API = "https://api.supabase.com"
 
@@ -26,6 +26,26 @@ class SupabaseConnector:
                 raise classify_http_error(r)
             orgs = r.json()
             return {"account": ", ".join(o.get("name", "") for o in orgs)[:120], "capabilities": ["inventory"]}
+
+    # --- destructive actions (explicit capability, never part of sync) --------
+
+    def pause_project(self, ref: str) -> dict[str, Any]:
+        with self._client() as c:
+            r = c.post(f"{API}/v1/projects/{ref}/pause")
+            if r.status_code in (401, 403, 404):
+                raise ConnectorError("the Supabase token cannot pause this project", status="reauth")
+            if r.status_code >= 400:
+                raise classify_http_error(r)
+            return {"paused": True}
+
+    def delete_project(self, ref: str) -> dict[str, Any]:
+        with self._client() as c:
+            r = c.delete(f"{API}/v1/projects/{ref}")
+            if r.status_code in (401, 403, 404):
+                raise ConnectorError("the Supabase token cannot delete this project", status="reauth")
+            if r.status_code >= 400:
+                raise classify_http_error(r)
+            return {"deleted": True}
 
     def project_profile(self, ref: str) -> dict[str, Any]:
         """Database shape: tables (public schema) with row estimates, RLS state,

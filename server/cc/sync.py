@@ -231,6 +231,8 @@ def _alert(store, org_id, ws, kind, target_kind, target_id, message, *, occurred
                 return
     store.insert("alerts", {"id": new_id("alr"), "organization_id": org_id, "workspace_id": ws, "kind": kind,
                             "target_kind": target_kind, "target_id": target_id, "status": "open", "message": message, "created_at": iso()})
+    from . import notify
+    notify.send(store=store, org_id=org_id, workspace_id=ws, kind=kind, title=message[:120], message=message)
 
 
 def freshness(connection: Row) -> dict[str, Any]:

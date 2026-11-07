@@ -121,6 +121,25 @@ let page; const errors = [];
   assert(!body.includes('sk-ant-not-a-real-key'), 'secret never rendered')
   await snap('09-agent-run')
 
+  // Usage per client: create a client, assign it to the project, see it in the report
+  await page.getByRole('link', { name: 'שימוש לפי לקוח' }).first().click()
+  await page.getByRole('button', { name: 'ניהול לקוחות' }).click()
+  await page.getByLabel('שם הלקוח').fill('לקוח בדיקה')
+  await page.getByRole('button', { name: 'הוספת לקוח' }).click()
+  await page.getByRole('cell', { name: 'לקוח בדיקה' }).first().waitFor()
+  await snap('12-usage-clients')
+
+  // Project drill-down: profile + health scan (no provider connections -> informative, not an error)
+  await page.getByRole('link', { name: 'פרויקטים', exact: true }).first().click()
+  await page.getByRole('link', { name: 'BuildFlow' }).first().click()
+  await page.getByRole('button', { name: 'איך הוא בנוי' }).click()
+  await page.getByRole('button', { name: /בנה פרופיל|רענן פרופיל/ }).click()
+  await page.getByText(/BuildFlow: \d+ ריפוזיטוריז/).waitFor()
+  await page.getByRole('button', { name: 'סריקות' }).click()
+  await page.getByRole('button', { name: 'סריקת תקינות' }).click()
+  await page.getByText(/ציון [ABC]/).first().waitFor()
+  await snap('13-project-scan')
+
   // Overview populated, security module reachable
   await page.getByRole('link', { name: 'סקירה' }).first().click()
   await page.getByText('דורש תשומת לב').waitFor()
