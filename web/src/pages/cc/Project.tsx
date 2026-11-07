@@ -135,6 +135,67 @@ export default function CcProject() {
               </>
             )}
           </Card>
+          {d.profile?.summary?.architecture && (() => {
+            const arch = d.profile!.summary!.architecture!
+            const roles: [string, string, string][] = [['frontend', 'צד לקוח', 'bg-sky-50 border-sky-200'], ['backend', 'צד שרת', 'bg-emerald-50 border-emerald-200'], ['database', 'מסד נתונים', 'bg-amber-50 border-amber-200'], ['functions', 'פונקציות', 'bg-violet-50 border-violet-200'], ['automation', 'אוטומציה', 'bg-slate-50 border-slate-200'], ['ci', 'CI', 'bg-slate-50 border-slate-200']]
+            const byRole = (r: string) => arch.nodes.filter(n => n.role === r)
+            return (
+              <Card title="מפת הארכיטקטורה: מה יושב איפה">
+                {arch.nodes.length === 0 ? <Empty>לא זוהו רכיבים. ודא שהריפוזיטוריז ופרויקטי ה-Vercel של הפרויקט משויכים אליו ושיש חיבורים חיים.</Empty> : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {roles.filter(([r]) => byRole(r).length).map(([r, label, tone]) => (
+                      <div key={r} className={`rounded-xl border p-3 ${tone}`}>
+                        <div className="mb-2 text-xs font-semibold text-slate-600">{label}</div>
+                        <ul className="space-y-2">
+                          {byRole(r).map(n => (
+                            <li key={n.id} className="rounded-lg bg-white/80 p-2 text-sm">
+                              <div className="flex flex-wrap items-center gap-2">
+                                {n.repo ? <Link to={`/assets/${n.repo_asset_id}`} className="font-medium text-indigo-700"><bdi>{n.repo}</bdi></Link> : <span className="font-medium"><bdi>{n.path}</bdi></span>}
+                                {n.repo && <span className="mono text-xs text-slate-600">/{n.path.replace(/^\/+/, '')}</span>}
+                                {n.note && <span className="badge bg-slate-100 text-slate-700">{n.note}</span>}
+                                {n.runtime && <span className="badge bg-slate-100 text-slate-500">{n.runtime}</span>}
+                              </div>
+                              {n.entrypoints.length > 0 && <div className="mt-1 text-xs text-slate-500">נקודות כניסה: <span className="mono">{n.entrypoints.slice(0, 4).join(', ')}</span></div>}
+                              {Object.keys(n.scripts ?? {}).length > 0 && <div className="text-xs text-slate-500">סקריפטים: <span className="mono">{Object.entries(n.scripts).slice(0, 5).map(([k, v]) => `${k}: ${v}`).join(' · ')}</span></div>}
+                              {n.runs_at.map(run => (
+                                <div key={run.asset_id} className="mt-1 text-xs">
+                                  <span className="text-slate-500">רץ ב-Vercel:</span> <Link to={`/assets/${run.asset_id}`} className="text-indigo-700">{run.name}</Link>
+                                  {run.domains.slice(0, 2).map(dm => <ExtLink key={dm} href={`https://${dm}`}>{dm}</ExtLink>)}
+                                  {run.branch && <span className="mono text-slate-500"> · {run.branch}</span>}
+                                  {run.last_production && <span className={`badge ml-1 ${run.last_production.state === 'READY' ? 'bg-emerald-100 text-emerald-800' : run.last_production.state === 'ERROR' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100'}`}>{run.last_production.state}</span>}
+                                  {run.env_names.length > 0 && <div className="text-slate-500">משתני סביבה ({run.env_names.length}): <span className="mono">{run.env_names.slice(0, 12).join(', ')}{run.env_names.length > 12 ? '…' : ''}</span></div>}
+                                </div>
+                              ))}
+                              {n.talks_to && n.talks_to.length > 0 && <div className="mt-1 flex flex-wrap gap-1 text-xs"><span className="text-slate-500">מדבר עם:</span>{n.talks_to.map(s => <span key={s} className="badge bg-indigo-50 text-indigo-800">{s}</span>)}</div>}
+                              {n.tables && n.tables.length > 0 && <div className="mt-1 text-xs text-slate-500">טבלאות: <span className="mono">{n.tables.slice(0, 10).map(tb => tb.name).join(', ')}{n.tables.length > 10 ? ` +${n.tables.length - 10}` : ''}</span></div>}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                    {arch.services.length > 0 && (
+                      <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 md:col-span-2">
+                        <div className="mb-2 text-xs font-semibold text-slate-600">שירותים חיצוניים ומי משתמש בהם</div>
+                        <ul className="grid gap-1 text-sm md:grid-cols-2">{arch.services.map(s => <li key={s.name}><span className="font-medium">{s.name}</span> <span className="text-xs text-slate-500">← {s.used_by.join(' · ')}</span></li>)}</ul>
+                      </div>
+                    )}
+                    {arch.edges.length > 0 && (
+                      <div className="rounded-xl border border-slate-200 p-3 md:col-span-2">
+                        <div className="mb-2 text-xs font-semibold text-slate-600">קשרים</div>
+                        <ul className="space-y-1 text-xs">{arch.edges.map((e, i) => <li key={i} className="mono"><bdi>{e.from}</bdi> → <bdi>{e.to}</bdi> <span className="text-slate-400">({e.kind})</span></li>)}</ul>
+                      </div>
+                    )}
+                    {(arch.unlinked_vercel.length > 0 || arch.repos_without_layout.length > 0) && (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 md:col-span-2">
+                        {arch.unlinked_vercel.length > 0 && <div>פרויקטי Vercel שלא שויכו לרכיב (אין ריפו מקושר או הוא לא בפרויקט): {arch.unlinked_vercel.map(v => <Link key={v.asset_id} to={`/assets/${v.asset_id}`} className="ml-2 text-indigo-700">{v.name}</Link>)}</div>}
+                        {arch.repos_without_layout.length > 0 && <div>ריפוזיטוריז בלי פרופיל (רענן פרופיל או בדוק חיבור): {arch.repos_without_layout.join(', ')}</div>}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Card>
+            )
+          })()}
           {d.profile?.assets.filter(a => a.profile).map(a => {
             const p = a.profile!
             return (

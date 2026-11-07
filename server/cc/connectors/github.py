@@ -24,6 +24,69 @@ INTEGRATION_HINTS = {
 }
 
 
+def detect_layout(paths: list[str], deps: dict[str, Any]) -> list[dict[str, Any]]:
+    """Where the client side, the server side, the database layer and the
+    automation live inside a repository, from its file layout. Each component:
+    role (frontend|backend|database|functions|infra|ci|tests|docs), path,
+    evidence (the files that gave it away), entrypoints."""
+    names = set(paths)
+    dirs = {p.rsplit("/", 1)[0] for p in paths if "/" in p}
+    comps: list[dict[str, Any]] = []
+
+    def add(role: str, path: str, evidence: list[str], entry: Optional[list[str]] = None, note: str = ""):
+        if any(c["role"] == role and c["path"] == path for c in comps):
+            return
+        comps.append({"role": role, "path": path or "/", "evidence": evidence[:6], "entrypoints": entry or [], "note": note})
+
+    low_deps = {d.lower() for d in deps}
+    # --- frontend ---------------------------------------------------------
+    for root in ("", "web", "client", "frontend", "app", "apps/web", "packages/web", "ui"):
+        pre = f"{root}/" if root else ""
+        ev = [p for p in (f"{pre}index.html", f"{pre}src/main.tsx", f"{pre}src/main.jsx", f"{pre}src/App.tsx", f"{pre}src/index.tsx", f"{pre}vite.config.ts", f"{pre}vite.config.js",
+                          f"{pre}app/layout.tsx", f"{pre}pages/_app.tsx", f"{pre}pages/_app.js", f"{pre}app/page.tsx", f"{pre}next.config.js", f"{pre}next.config.ts", f"{pre}next.config.mjs") if p in names]
+        if ev:
+            fw = "Next.js" if any("next.config" in e or "/app/layout" in f"/{e}" or "pages/_app" in e for e in ev) else ("Vite/React" if any("vite.config" in e or "src/main" in e for e in ev) else "SPA")
+            add("frontend", root, ev, [e for e in ev if "main." in e or "_app" in e or "layout.tsx" in e or "index.html" in e], fw)
+    # --- backend ----------------------------------------------------------
+    for root in ("", "server", "backend", "api", "apps/api", "packages/api", "services"):
+        pre = f"{root}/" if root else ""
+        ev = [p for p in (f"{pre}main.py", f"{pre}app.py", f"{pre}app/main.py", f"{pre}src/main.py", f"{pre}manage.py", f"{pre}wsgi.py", f"{pre}asgi.py",
+                          f"{pre}server.ts", f"{pre}server.js", f"{pre}src/server.ts", f"{pre}src/index.ts", f"{pre}index.js", f"{pre}src/app.ts") if p in names]
+        if root in ("api", "server", "backend") and not ev and any(p.startswith(pre) for p in paths):
+            ev = [p for p in paths if p.startswith(pre)][:3]
+        if ev:
+            kind = "FastAPI" if any(e.endswith((".py",)) for e in ev) and "fastapi" in low_deps else ("Django" if f"{pre}manage.py" in names else ("Python" if any(e.endswith(".py") for e in ev) else "Node"))
+            add("backend", root, ev, [e for e in ev if e.endswith(("main.py", "app.py", "server.ts", "server.js", "index.ts", "index.js", "manage.py"))], kind)
+    # Next.js / Vercel serverless route handlers are a backend living inside the frontend tree.
+    api_routes = [p for p in paths if "/api/" in f"/{p}" and p.endswith((".ts", ".js", ".py")) and ("pages/api/" in p or "app/api/" in p or p.startswith("api/"))]
+    if api_routes:
+        base = "pages/api" if any("pages/api/" in p for p in api_routes) else ("app/api" if any("app/api/" in p for p in api_routes) else "api")
+        add("backend", base, api_routes[:6], api_routes[:6], f"{len(api_routes)} route handlers (serverless)")
+    # --- database / data layer --------------------------------------------
+    for path, note in (("prisma/schema.prisma", "Prisma schema"), ("supabase/migrations", "Supabase migrations"), ("supabase/config.toml", "Supabase project config"),
+                       ("drizzle", "Drizzle"), ("alembic", "Alembic migrations"), ("migrations", "SQL migrations"), ("db", "db layer"), ("database", "db layer"), ("server/pt_agent/db/migrations", "SQL migrations")):
+        hits = [p for p in paths if p == path or p.startswith(path + "/")]
+        if hits:
+            add("database", path, hits[:5], [], note)
+    if "supabase/functions" in dirs or any(p.startswith("supabase/functions/") for p in paths):
+        add("functions", "supabase/functions", [p for p in paths if p.startswith("supabase/functions/")][:5], [], "Supabase Edge Functions")
+    # --- infra / automation / tests / docs ---------------------------------
+    infra = [p for p in ("Dockerfile", "docker-compose.yml", "vercel.json", "fly.toml", "render.yaml", "netlify.toml", "serverless.yml") if p in names]
+    if infra:
+        add("infra", "", infra, [], "deployment config")
+    wf = [p for p in paths if p.startswith(".github/workflows/")]
+    if wf:
+        add("ci", ".github/workflows", wf, [], f"{len(wf)} workflows")
+    tests = [p for p in paths if p.startswith(("tests/", "test/", "e2e/", "__tests__/")) or "/tests/" in f"/{p}" or "/e2e/" in f"/{p}" or p.endswith((".test.ts", ".test.tsx", ".spec.ts", "_test.py"))]
+    if tests:
+        roots = sorted({p.split("/")[0] if p.startswith(("tests", "test", "e2e", "__tests__")) else (p.split("/tests/")[0] + "/tests" if "/tests/" in f"/{p}" else p.rsplit("/", 1)[0]) for p in tests})[:3]
+        add("tests", ", ".join(roots), tests[:5], [], f"{len(tests)} test files")
+    docs = [p for p in paths if p.startswith("docs/")]
+    if docs:
+        add("docs", "docs", docs[:5], [], f"{len(docs)} files")
+    return comps
+
+
 def _detect_integrations(deps: dict[str, Any]) -> list[str]:
     seen: list[str] = []
     for d in deps:
@@ -112,6 +175,28 @@ class GitHubConnector:
                     if key in low and not out["framework"]:
                         out["framework"] = fw
             out["integrations"] = _detect_integrations(out["dependencies"])
+            out["layout"] = detect_layout(paths, out["dependencies"])
+            if "vercel.json" in names:
+                vj = self._json_file(c, full_name, "vercel.json", out["default_branch"])
+                out["vercel_json"] = {"framework": vj.get("framework", ""), "crons": [cr.get("path") for cr in vj.get("crons", []) if isinstance(cr, dict)],
+                                      "rewrites": [{"source": r.get("source", ""), "destination": r.get("destination", "")} for r in vj.get("rewrites", []) if isinstance(r, dict)][:10]}
+            for sub in sorted({p.split("/")[0] for p in paths if "/" in p and p.split("/")[0] in ("server", "web", "client", "frontend", "backend", "api", "app", "apps", "packages")}):
+                for mf in ("package.json", "requirements.txt", "pyproject.toml"):
+                    if f"{sub}/{mf}" in names and mf == "package.json":
+                        pj = self._json_file(c, full_name, f"{sub}/package.json", out["default_branch"])
+                        deps = {**(pj.get("dependencies") or {}), **(pj.get("devDependencies") or {})}
+                        out.setdefault("subprojects", {})[sub] = {"runtime": "node", "dependencies": list(deps)[:40], "scripts": {k: v[:60] for k, v in (pj.get("scripts") or {}).items()},
+                                                                   "integrations": _detect_integrations(deps)}
+                        for i in out["subprojects"][sub]["integrations"]:
+                            if i not in out["integrations"]:
+                                out["integrations"].append(i)
+                    elif f"{sub}/{mf}" in names:
+                        txt = self._text_file(c, full_name, f"{sub}/{mf}", out["default_branch"])
+                        pkgs = [ln.strip().split("==")[0].split(">=")[0].split("[")[0].strip().strip('",') for ln in txt.splitlines() if ln.strip() and not ln.strip().startswith(("#", "["))]
+                        out.setdefault("subprojects", {})[sub] = {"runtime": "python", "dependencies": pkgs[:40], "scripts": {}, "integrations": _detect_integrations({p: "" for p in pkgs})}
+                        for i in out["subprojects"][sub]["integrations"]:
+                            if i not in out["integrations"]:
+                                out["integrations"].append(i)
             if out["has_readme"]:
                 out["readme_excerpt"] = self._text_file(c, full_name, "README.md", out["default_branch"])[:1500]
         return out

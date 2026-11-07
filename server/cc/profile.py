@@ -87,6 +87,106 @@ def build_profile(store, org_id: str, project: Row) -> dict[str, Any]:
     return {"assets": assets, "summary": summary, "at": iso()}
 
 
+ENV_SERVICES = (
+    ("GREEN_API", "WhatsApp (Green API)"), ("GREENAPI", "WhatsApp (Green API)"), ("WHATSAPP", "WhatsApp"), ("WA_", "WhatsApp"), ("META_", "Meta (WhatsApp/Facebook)"),
+    ("GEMINI", "Gemini"), ("GOOGLE_AI", "Gemini"), ("ANTHROPIC", "Claude"), ("CLAUDE", "Claude"), ("OPENAI", "OpenAI"), ("GROQ", "Groq"),
+    ("GOOGLE_VISION", "Google Vision (OCR)"), ("DOCUMENT_AI", "Google Document AI (OCR)"), ("TESSERACT", "OCR"),
+    ("RESEND", "Email (Resend)"), ("SMTP", "Email (SMTP)"), ("SENDGRID", "Email (SendGrid)"), ("TWILIO", "Twilio"), ("TELEGRAM", "Telegram"),
+    ("STRIPE", "Stripe"), ("PAYPAL", "PayPal"), ("SHOPIFY", "Shopify"), ("SUPABASE", "Supabase"), ("DATABASE_URL", "Postgres"), ("POSTGRES", "Postgres"), ("PGHOST", "Postgres"),
+    ("NEON", "Neon Postgres"), ("REDIS", "Redis"), ("GOOGLE_CLIENT", "Google OAuth"), ("GOOGLE_SA", "Google service account"), ("SENTRY", "Sentry"),
+    ("CLOUDINARY", "Cloudinary"), ("S3_", "S3"), ("AWS_", "AWS"), ("FIREBASE", "Firebase"), ("JWT", "JWT auth"), ("CRON_SECRET", "Vercel cron"),
+)
+ROLE_LABELS = {"frontend": "צד לקוח", "backend": "צד שרת", "database": "מסד נתונים / סכימה", "functions": "פונקציות", "infra": "תשתית ופריסה", "ci": "CI", "tests": "בדיקות", "docs": "תיעוד"}
+
+
+def _env_services(env_names: list[str]) -> list[str]:
+    out: list[str] = []
+    for name in env_names or []:
+        up = name.upper()
+        for key, label in ENV_SERVICES:
+            if key in up and label not in out:
+                out.append(label)
+    return out
+
+
+def architecture(project: Row, assets: list[Row]) -> dict[str, Any]:
+    """The map a developer wants when opening a project: where the client side
+    and the server side live (repo + path + entry points), where each runs
+    (Vercel project, domain, root directory, branch), which database it uses
+    (Supabase project + tables), which external services it talks to (from
+    dependencies and env variable names), automation (crons, CI), and the
+    relationships between them."""
+    repos = [a for a in assets if a["provider"] == "github"]
+    vercels = [a for a in assets if a["provider"] == "vercel"]
+    dbs = [a for a in assets if a["provider"] == "supabase"]
+    nodes: list[dict[str, Any]] = []
+    edges: list[dict[str, str]] = []
+
+    def vercel_for(repo_name: str, root: str) -> list[Row]:
+        out = []
+        for v in vercels:
+            p = v.get("profile") or {}
+            if (p.get("linked_repo") or "").lower() == repo_name.lower():
+                rd = (p.get("root_directory") or "").strip("/")
+                if rd == root.strip("/") or (not rd and not root) or not any(((x.get("profile") or {}).get("root_directory") or "").strip("/") == root.strip("/") for x in vercels):
+                    out.append(v)
+        return out
+
+    for r in repos:
+        p = r.get("profile") or {}
+        comps = p.get("layout") or []
+        for comp in comps:
+            if comp["role"] not in ("frontend", "backend", "database", "functions"):
+                continue
+            nid = f"{r['id']}:{comp['role']}:{comp['path']}"
+            runs = []
+            for v in vercel_for(r["name"], comp["path"] if comp["role"] in ("frontend", "backend") else ""):
+                vp = v.get("profile") or {}
+                runs.append({"asset_id": v["id"], "name": v["name"], "domains": vp.get("domains") or [], "branch": vp.get("production_branch") or "",
+                             "last_production": vp.get("last_production"), "env_names": vp.get("env_names") or [], "services": _env_services(vp.get("env_names") or [])})
+            sub = (p.get("subprojects") or {}).get(comp["path"].strip("/"), {})
+            nodes.append({"id": nid, "role": comp["role"], "label": ROLE_LABELS.get(comp["role"], comp["role"]), "repo": r["name"], "repo_asset_id": r["id"],
+                          "path": comp["path"], "note": comp.get("note", ""), "entrypoints": comp.get("entrypoints") or [], "evidence": comp.get("evidence") or [],
+                          "runtime": sub.get("runtime") or p.get("runtime") or "", "scripts": sub.get("scripts") or (p.get("scripts") if comp["path"] in ("/", "") else {}) or {},
+                          "integrations": sub.get("integrations") or p.get("integrations") or [], "runs_at": runs})
+        # relationships inside the repo: frontend -> backend when a vercel.json rewrite or an API env points at a backend
+        vj = p.get("vercel_json") or {}
+        for rw in vj.get("rewrites") or []:
+            if rw.get("destination", "").startswith("http"):
+                edges.append({"from": f"{r['name']} (rewrite {rw['source']})", "to": rw["destination"], "kind": "http"})
+        for cr in vj.get("crons") or []:
+            nodes.append({"id": f"{r['id']}:cron:{cr}", "role": "automation", "label": "אוטומציה (cron)", "repo": r["name"], "repo_asset_id": r["id"], "path": cr,
+                          "note": "Vercel cron", "entrypoints": [cr], "evidence": ["vercel.json"], "runtime": "", "scripts": {}, "integrations": [], "runs_at": []})
+        if p.get("workflows"):
+            nodes.append({"id": f"{r['id']}:ci", "role": "ci", "label": "CI", "repo": r["name"], "repo_asset_id": r["id"], "path": ".github/workflows",
+                          "note": ", ".join(p["workflows"][:5]), "entrypoints": [], "evidence": p["workflows"][:5], "runtime": "", "scripts": {}, "integrations": [], "runs_at": []})
+    for d in dbs:
+        dp = d.get("profile") or {}
+        nodes.append({"id": f"{d['id']}:db", "role": "database", "label": "מסד נתונים (Supabase)", "repo": "", "repo_asset_id": None, "path": d["name"],
+                      "note": f"{len(dp.get('tables') or [])} טבלאות · {dp.get('region') or ''} · Postgres {dp.get('postgres_version') or ''}".strip(" ·"),
+                      "entrypoints": [], "evidence": [t["name"] for t in (dp.get("tables") or [])[:12]], "runtime": "postgres", "scripts": {}, "integrations": [],
+                      "runs_at": [], "asset_id": d["id"], "tables": dp.get("tables") or []})
+    # Edges: every backend/frontend that has Supabase/Postgres env or deps -> each db of the project; services from env/deps.
+    services: dict[str, list[str]] = {}
+    for n in nodes:
+        if n["role"] in ("frontend", "backend"):
+            svc = list(n["integrations"])
+            for run in n["runs_at"]:
+                for s in run["services"]:
+                    if s not in svc:
+                        svc.append(s)
+            n["talks_to"] = svc
+            for s in svc:
+                services.setdefault(s, []).append(f"{n['label']} · {n['repo']}/{n['path']}".rstrip("/"))
+            if any(s in ("Supabase", "Postgres", "Neon Postgres", "Neon") for s in svc):
+                for d in dbs:
+                    edges.append({"from": f"{n['label']} ({n['repo']}/{n['path']})".replace("//", "/"), "to": f"Supabase {d['name']}", "kind": "db"})
+    unlinked_vercel = [{"asset_id": v["id"], "name": v["name"], "domains": (v.get("profile") or {}).get("domains") or [], "linked_repo": (v.get("profile") or {}).get("linked_repo") or ""}
+                       for v in vercels if not any(run["asset_id"] == v["id"] for n in nodes for run in n.get("runs_at", []))]
+    return {"nodes": nodes, "edges": edges, "services": [{"name": k, "used_by": v} for k, v in sorted(services.items())], "unlinked_vercel": unlinked_vercel,
+            "repos_without_layout": [r["name"] for r in repos if not (r.get("profile") or {}).get("layout")]}
+
+
 def summarize(project: Row, assets: list[Row]) -> dict[str, Any]:
     """Deterministic architecture summary from the asset profiles."""
     repos = [a for a in assets if a["provider"] == "github"]
@@ -121,9 +221,17 @@ def summarize(project: Row, assets: list[Row]) -> dict[str, Any]:
         lines.append(f"בדיקות ב-{tests}/{len(repos)} ריפוזיטוריז, CI ב-{ci}/{len(repos)}.")
     if domains:
         lines.append("כתובות: " + ", ".join(domains[:5]) + ".")
+    arch = architecture(project, assets)
+    fe = [n for n in arch["nodes"] if n["role"] == "frontend"]
+    be = [n for n in arch["nodes"] if n["role"] == "backend"]
+    if fe or be:
+        lines.append("צד לקוח: " + ("; ".join(f"{n['repo']}/{n['path']}".rstrip("/") + (f" → {n['runs_at'][0]['domains'][0]}" if n['runs_at'] and n['runs_at'][0]['domains'] else "") for n in fe) or "לא זוהה") + ".")
+        lines.append("צד שרת: " + ("; ".join(f"{n['repo']}/{n['path']}".rstrip("/") + f" ({n['note']})" + (f" → {n['runs_at'][0]['domains'][0]}" if n['runs_at'] and n['runs_at'][0]['domains'] else "") for n in be) or "לא זוהה") + ".")
+    if arch["services"]:
+        lines.append("שירותים חיצוניים: " + ", ".join(s["name"] for s in arch["services"]) + ".")
     return {"text": "\n".join(lines), "languages": lang_pct, "frameworks": frameworks, "integrations": integrations,
             "repos": len(repos), "deployments": len(vercels), "databases": len(dbs), "tables": tables, "domains": domains[:10],
-            "tests_ratio": f"{tests}/{len(repos)}" if repos else "", "ci_ratio": f"{ci}/{len(repos)}" if repos else ""}
+            "tests_ratio": f"{tests}/{len(repos)}" if repos else "", "ci_ratio": f"{ci}/{len(repos)}" if repos else "", "architecture": arch}
 
 
 def run_code_scan(store, org_id: str, project: Row, *, actor: str) -> Row:

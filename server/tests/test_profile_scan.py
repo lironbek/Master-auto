@@ -31,7 +31,10 @@ class FakeGitHub:
     def repo_profile(self, full):
         return {"full_name": full, "default_branch": "main", "languages": {"TypeScript": 900, "Python": 100}, "framework": "Next.js",
                 "dependencies": {"next": "15", "@anthropic-ai/sdk": "0.5", "@supabase/supabase-js": "2"}, "integrations": ["Claude", "Supabase", "Next.js"],
-                "workflows": [], "has_tests": False, "has_readme": True, "env_files_committed": [".env"], "manifests": ["package.json"], "license": ""}
+                "workflows": [], "has_tests": False, "has_readme": True, "env_files_committed": [".env"], "manifests": ["package.json"], "license": "",
+                "layout": [{"role": "frontend", "path": "/", "evidence": ["app/layout.tsx"], "entrypoints": ["app/layout.tsx"], "note": "Next.js"},
+                           {"role": "backend", "path": "app/api", "evidence": ["app/api/leads/route.ts"], "entrypoints": ["app/api/leads/route.ts"], "note": "1 route handlers (serverless)"}],
+                "vercel_json": {"framework": "nextjs", "crons": ["/api/cron/daily"], "rewrites": []}}
 
     def repo_health(self, full, prof):
         return [{"severity": "high", "title": "קובץ .env נמצא בריפו", "detail": ".env", "fix": "הסר", "source": "github"},
@@ -69,6 +72,13 @@ def test_profile_and_scan_flow(client):
     assert prof["summary"]["frameworks"] == ["Next.js"] and "Claude" in prof["summary"]["integrations"]
     assert prof["summary"]["languages"]["TypeScript"] == 90
     assert prof["assets"][0]["profile"]["framework"] == "Next.js"
+    arch = prof["summary"]["architecture"]
+    roles = {n["role"] for n in arch["nodes"]}
+    assert {"frontend", "backend", "automation"} <= roles
+    be = [n for n in arch["nodes"] if n["role"] == "backend"][0]
+    assert be["repo"] == "acme/app" and be["path"] == "app/api" and "Claude" in be["talks_to"]
+    assert any(s["name"] == "Supabase" for s in arch["services"])
+    assert "צד שרת: acme/app/app/api" in prof["summary"]["text"]
 
     scan = client.post(f"/cc/projects/{pr['id']}/scan", headers=h).json()
     assert scan["grade"] == "C" and scan["counts"]["high"] == 1 and scan["counts"]["medium"] == 1
