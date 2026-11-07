@@ -4,6 +4,7 @@ import { api, type Connection, type Workspace } from '../../api'
 import { Card, Empty, ErrorBox, Field, Spinner, Table } from '../../components/ui'
 import { ConnPill, FirstWorkspace } from '../../components/cc'
 import { coverage, fmtDate, provider, t } from '../../i18n'
+import { BrandTile } from '../../components/brand'
 import { useWorkspace } from '../../workspace'
 
 interface ProviderInfo { label: string; secret_label: string; fields: string[] }
@@ -68,7 +69,7 @@ export default function Connections() {
           <Table head={['ספק', 'חשבון', 'כיסוי', 'מצב', 'סנכרון אחרון', 'ניסיון אחרון', '']}>
             {items.map(c => (
               <tr key={c.id}>
-                <td className="px-3 py-2 font-medium">{t(provider, c.provider)}</td>
+                <td className="px-3 py-2 font-medium"><span className="flex items-center gap-2"><BrandTile name={c.provider} size="sm" /> {t(provider, c.provider)}</span></td>
                 <td className="px-3 py-2 text-sm">{c.account_label} <span className="mono text-xs text-slate-400">{c.secret_masked}</span></td>
                 <td className="px-3 py-2 text-xs">{c.coverage ? Object.entries(c.coverage).map(([k, v]) => `${k}: ${t(coverage, v)}`).join(' · ') : (c.capabilities?.join(' · ') || '—')}{c.notes?.length ? <div className="text-amber-700">{c.notes.join(' ')}</div> : null}</td>
                 <td className="px-3 py-2"><ConnPill value={c.status} />{c.freshness?.stale && ['ok', 'partial', 'error'].includes(c.status) && <span className="badge mr-1 bg-amber-100 text-amber-800">לא עדכני</span>}{c.last_error && <div className="mt-1 max-w-xs truncate text-xs text-rose-700" title={c.last_error}>{c.last_error}</div>}</td>

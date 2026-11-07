@@ -4,6 +4,7 @@ import { api, type CcClient, type UsageReport } from '../../api'
 import { Card, Empty, ErrorBox, Field, Spinner, Stat, Table } from '../../components/ui'
 import { FirstWorkspace } from '../../components/cc'
 import { fmtDate, metricLabel, provider as providerLabels, qty, t, usageProvider } from '../../i18n'
+import { BrandTile } from '../../components/brand'
 import { useWorkspace } from '../../workspace'
 
 const monthStart = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01` }
@@ -75,7 +76,7 @@ export default function Usage() {
               {data.by_client.map(c => <tr key={c.client_id ?? '_'}>
                 <td className="px-3 py-2 font-medium">{c.client_name}</td>
                 <td className="px-3 py-2"><Metrics m={c.metrics} /></td>
-                <td className="px-3 py-2 text-xs">{Object.entries(c.providers).map(([p, m]) => <div key={p} className="flex items-center gap-2 py-0.5"><span className="w-20 shrink-0 font-medium">{t(usageProvider, p)}</span><Metrics m={m} /></div>)}</td>
+                <td className="px-3 py-2 text-xs">{Object.entries(c.providers).map(([p, m]) => <div key={p} className="flex items-center gap-2 py-0.5"><span className="flex w-28 shrink-0 items-center gap-1.5 font-medium"><BrandTile name={p} size="sm" /> {t(usageProvider, p)}</span><Metrics m={m} /></div>)}</td>
                 <td className="px-3 py-2 text-xs">{Object.entries(c.interfaces).map(([i, m]) => <div key={i} className="flex items-center gap-2 py-0.5"><span className="mono w-32 shrink-0 truncate" title={i}>{i || '—'}</span><Metrics m={m} /></div>)}</td>
                 <td className="px-3 py-2 text-xs">{c.entries}</td>
               </tr>)}
@@ -89,14 +90,14 @@ export default function Usage() {
           <Card title="לפי ממשק (מי ביצע את הקריאות)">
             {!data ? <Spinner /> : data.by_interface.length === 0 ? <Empty>אין נתונים.</Empty> : (
               <Table head={['ממשק', 'ספק', 'כמויות', 'רשומות']}>
-                {data.by_interface.map(i => <tr key={`${i.interface}|${i.provider}`}><td className="px-3 py-2"><span className="mono text-xs">{i.interface || '—'}</span></td><td className="px-3 py-2 text-xs">{t(usageProvider, i.provider)}</td><td className="px-3 py-2"><Metrics m={i.metrics} /></td><td className="px-3 py-2 text-xs">{i.entries}</td></tr>)}
+                {data.by_interface.map(i => <tr key={`${i.interface}|${i.provider}`}><td className="px-3 py-2"><span className="mono text-xs">{i.interface || '—'}</span></td><td className="px-3 py-2 text-xs"><span className="flex items-center gap-1.5"><BrandTile name={i.provider} size="sm" /> {t(usageProvider, i.provider)}</span></td><td className="px-3 py-2"><Metrics m={i.metrics} /></td><td className="px-3 py-2 text-xs">{i.entries}</td></tr>)}
               </Table>
             )}
           </Card>
           <Card title="לפי ספק">
             {!data ? <Spinner /> : data.by_provider.length === 0 ? <Empty>אין נתונים.</Empty> : (
               <Table head={['ספק / API', 'כמויות', 'רשומות']}>
-                {data.by_provider.map(p => <tr key={p.provider}><td className="px-3 py-2 font-medium">{t(usageProvider, p.provider)}</td><td className="px-3 py-2"><Metrics m={p.metrics} /></td><td className="px-3 py-2 text-xs">{p.entries}</td></tr>)}
+                {data.by_provider.map(p => <tr key={p.provider}><td className="px-3 py-2 font-medium"><span className="flex items-center gap-2"><BrandTile name={p.provider} size="sm" /> {t(usageProvider, p.provider)}</span></td><td className="px-3 py-2"><Metrics m={p.metrics} /></td><td className="px-3 py-2 text-xs">{p.entries}</td></tr>)}
               </Table>
             )}
             <h3 className="mt-4 text-xs font-semibold text-slate-600">לפי פרויקט</h3>

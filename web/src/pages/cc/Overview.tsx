@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Activity, AlertTriangle, ArrowLeft, Bot, Boxes, Cloud, Database, FolderKanban, GitBranch, Globe, Inbox, Link2, MessageCircle, Rocket, Search, Send, Sparkles, Wand2, Zap } from 'lucide-react'
+import { Activity, AlertTriangle, ArrowLeft, Bot, Boxes, Cloud, FolderKanban, Globe, Inbox, Link2, MessageCircle, Rocket, Search, Send, Sparkles, Wand2 } from 'lucide-react'
 import { api, type CcProject, type Overview as OverviewData, type OverviewStats } from '../../api'
 import { Card, Empty, ErrorBox, Spinner } from '../../components/ui'
+import { BrandIcon, BrandTile, hasBrand } from '../../components/brand'
 import { DayBars, Donut, Sparkline } from '../../components/charts'
 import { EventRow, FirstWorkspace } from '../../components/cc'
 import { alertKind, fmtDate, fmtRel, provider, qty, t } from '../../i18n'
@@ -39,26 +40,23 @@ function StatTile({ label, value, icon, tint, tone, spark, delta, to }: { label:
   )
 }
 
-const providerIcon: Record<string, { icon: ReactNode; tint: string; label: string }> = {
-  github: { icon: <GitBranch className="h-4 w-4" />, tint: 'bg-slate-800 text-white', label: 'GitHub' },
-  vercel: { icon: <Rocket className="h-4 w-4" />, tint: 'bg-slate-900 text-white', label: 'Vercel' },
-  supabase: { icon: <Database className="h-4 w-4" />, tint: 'bg-emerald-500 text-white', label: 'Supabase' },
-  n8n: { icon: <Zap className="h-4 w-4" />, tint: 'bg-pink-500 text-white', label: 'n8n' },
+const providerMeta: Record<string, { icon: ReactNode; tint: string; label: string }> = {
   reporter: { icon: <Send className="h-4 w-4" />, tint: 'bg-indigo-500 text-white', label: 'דיווח חיצוני' },
-  whatsapp: { icon: <MessageCircle className="h-4 w-4" />, tint: 'bg-green-500 text-white', label: 'WhatsApp' },
-  claude: { icon: <Sparkles className="h-4 w-4" />, tint: 'bg-orange-400 text-white', label: 'Claude' },
-  anthropic: { icon: <Sparkles className="h-4 w-4" />, tint: 'bg-orange-400 text-white', label: 'Claude' },
-  gemini: { icon: <Wand2 className="h-4 w-4" />, tint: 'bg-sky-500 text-white', label: 'Gemini' },
-  openai: { icon: <Bot className="h-4 w-4" />, tint: 'bg-slate-700 text-white', label: 'OpenAI' },
   ocr: { icon: <Search className="h-4 w-4" />, tint: 'bg-violet-500 text-white', label: 'OCR' },
+  sms: { icon: <MessageCircle className="h-4 w-4" />, tint: 'bg-sky-500 text-white', label: 'SMS' },
 }
+const brandLabel: Record<string, string> = { whatsapp: 'WhatsApp', telegram: 'Telegram', github: 'GitHub', vercel: 'Vercel', supabase: 'Supabase', n8n: 'n8n', claude: 'Claude', anthropic: 'Claude', gemini: 'Gemini', openai: 'OpenAI', email: 'Gmail', gmail: 'Gmail' }
 function ProviderBadge({ name, count, size = 'md' }: { name: string; count?: number; size?: 'sm' | 'md' }) {
-  const p = providerIcon[name] ?? { icon: <Cloud className="h-4 w-4" />, tint: 'bg-slate-400 text-white', label: t(provider, name) }
-  if (size === 'sm') return <span className={`grid h-6 w-6 place-items-center rounded-md ${p.tint}`} title={p.label}>{p.icon}</span>
+  const label = brandLabel[name] ?? providerMeta[name]?.label ?? t(provider, name)
+  const generic = providerMeta[name] ?? { icon: <Cloud className="h-4 w-4" />, tint: 'bg-slate-400 text-white' }
+  const tile = hasBrand(name)
+    ? <BrandTile name={name} size={size === 'sm' ? 'sm' : 'md'} title={label} />
+    : <span className={`grid shrink-0 place-items-center ${size === 'sm' ? 'h-6 w-6 rounded-md' : 'h-8 w-8 rounded-lg'} ${generic.tint}`} title={label}>{generic.icon}</span>
+  if (size === 'sm') return tile
   return (
     <div className="flex items-center gap-2 rounded-xl bg-white/90 px-3 py-2 shadow-sm ring-1 ring-white">
-      <span className={`grid h-8 w-8 place-items-center rounded-lg ${p.tint}`}>{p.icon}</span>
-      <div className="leading-tight"><div className="text-xs font-semibold text-slate-800">{p.label}</div>{count !== undefined && <div className="text-[11px] text-slate-500">{qty(count)} נכסים</div>}</div>
+      {tile}
+      <div className="leading-tight"><div className="text-xs font-semibold text-slate-800">{label}</div>{count !== undefined && <div className="text-[11px] text-slate-500">{qty(count)} נכסים</div>}</div>
     </div>
   )
 }
@@ -144,9 +142,9 @@ export default function Overview() {
             <span className="text-sm font-bold">{active.length ? Math.round((ok / active.length) * 100) : 0}%</span>
           </Donut>
         </Link>
-        <StatTile label="הודעות שנשלחו (30 יום)" value={qty(Math.round(st.usage_month.messages))} icon={<MessageCircle className="h-5 w-5" />} tint="bg-teal-100 text-teal-700" tone="teal"
+        <StatTile label="הודעות שנשלחו (30 יום)" value={qty(Math.round(st.usage_month.messages))} icon={<BrandIcon name="whatsapp" className="h-5 w-5" />} tint="bg-[#25D366] text-white" tone="teal"
           spark={st.usage_daily.map(d => d.messages)} delta={<Delta now={st.usage_month.messages} before={st.usage_prev_month.messages} suffix="מ-30 הימים הקודמים" />} to="/usage" />
-        <StatTile label="קריאות AI (30 יום)" value={qty(Math.round(st.usage_month.ai_requests))} icon={<Sparkles className="h-5 w-5" />} tint="bg-violet-100 text-violet-700" tone="violet"
+        <StatTile label="קריאות AI (30 יום)" value={qty(Math.round(st.usage_month.ai_requests))} icon={<BrandIcon name="claude" className="h-5 w-5" />} tint="bg-[#D97757] text-white" tone="violet"
           spark={st.usage_daily.map(d => d.ai_requests)} delta={<Delta now={st.usage_month.ai_requests} before={st.usage_prev_month.ai_requests} suffix="מ-30 הימים הקודמים" />} to="/usage" />
         <StatTile label="פריסות השבוע" value={qty(st.this_week.deployments)} icon={<Rocket className="h-5 w-5" />} tint="bg-amber-100 text-amber-700" tone="amber"
           spark={spark(d => d.deployments)} delta={<Delta now={st.this_week.deployments} before={st.prev_week.deployments} />} to="/sessions" />
@@ -157,7 +155,7 @@ export default function Overview() {
           <div className="grid grid-cols-2 gap-3">
             {[
               { label: 'פרויקטים', value: active.length, icon: <FolderKanban className="h-5 w-5" />, tint: 'bg-teal-100 text-teal-700', to: '/projects' },
-              { label: 'ריפוזיטוריז', value: data.assets_by_kind.repo ?? 0, icon: <GitBranch className="h-5 w-5" />, tint: 'bg-slate-200 text-slate-700', to: '/assets' },
+              { label: 'ריפוזיטוריז', value: data.assets_by_kind.repo ?? 0, icon: <BrandIcon name="github" className="h-5 w-5" />, tint: 'bg-slate-200 text-slate-800', to: '/assets' },
               { label: 'אינטגרציות', value: live, icon: <Link2 className="h-5 w-5" />, tint: 'bg-amber-100 text-amber-700', to: '/connections' },
               { label: 'בוטים ואוטומציות', value: agentsCount + workflows, icon: <Bot className="h-5 w-5" />, tint: 'bg-violet-100 text-violet-700', to: '/agents' },
             ].map(x => (
