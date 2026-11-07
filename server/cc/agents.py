@@ -31,7 +31,7 @@ class AgentRunError(RuntimeError):
 def gather_context(store, org_id: str, project: Row) -> dict[str, Any]:
     ws = project["workspace_id"]
     links = store.list("project_assets", organization_id=org_id, project_id=project["id"])
-    assets = [a for a in (store.get("assets", l["asset_id"], organization_id=org_id) for l in links) if a]
+    assets = [a for a in (store.get("cc_assets", l["asset_id"], organization_id=org_id) for l in links) if a]
     events = store.list("activity_events", organization_id=org_id, workspace_id=ws, project_id=project["id"])[-25:]
     sessions = store.list("work_sessions", organization_id=org_id, workspace_id=ws, project_id=project["id"])
     costs = store.list("cost_entries", organization_id=org_id, workspace_id=ws, project_id=project["id"])

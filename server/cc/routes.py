@@ -104,7 +104,7 @@ def overview(workspace_id: Optional[str] = None, p: Principal = Depends(current_
     if workspace_id and workspace_id not in visible_workspace_ids(p):
         raise HTTPException(status_code=404, detail="workspace not found")
     projects = list_in_workspaces(p, "cc_projects", workspace_id)
-    assets = [a for a in list_in_workspaces(p, "assets", workspace_id) if not a.get("removed_at")]
+    assets = [a for a in list_in_workspaces(p, "cc_assets", workspace_id) if not a.get("removed_at")]
     sessions = list_in_workspaces(p, "work_sessions", workspace_id)
     connections = list_in_workspaces(p, "connections", workspace_id)
     inbox = [i for i in list_in_workspaces(p, "inbox_items", workspace_id) if i["status"] == "open"]
@@ -179,7 +179,7 @@ def get_project(project_id: str, p: Principal = Depends(current_principal)):
     store, org = _store(), p.organization_id
     pr = get_in_workspace(p, "cc_projects", project_id)
     links = store.list("project_assets", organization_id=org, project_id=project_id)
-    assets = [{**a, "link_source": l["source"]} for l in links for a in [store.get("assets", l["asset_id"], organization_id=org)] if a]
+    assets = [{**a, "link_source": l["source"]} for l in links for a in [store.get("cc_assets", l["asset_id"], organization_id=org)] if a]
     events = sorted(store.list("activity_events", organization_id=org, workspace_id=pr["workspace_id"], project_id=project_id),
                     key=lambda e: str(e.get("occurred_at")), reverse=True)[:50]
     sessions = store.list("work_sessions", organization_id=org, workspace_id=pr["workspace_id"], project_id=project_id)
@@ -217,7 +217,7 @@ class AssignIn(BaseModel):
 @router.post("/projects/{project_id}/assets")
 def assign_asset(project_id: str, body: AssignIn, p: Principal = Depends(current_principal)):
     pr = get_in_workspace(p, "cc_projects", project_id, minimum=WS_EDITOR)
-    asset = get_in_workspace(p, "assets", body.asset_id)
+    asset = get_in_workspace(p, "cc_assets", body.asset_id)
     if asset["workspace_id"] != pr["workspace_id"]:
         raise HTTPException(status_code=422, detail="asset and project must share a workspace")   # PRD 4.4
     store, org = _store(), p.organization_id
@@ -370,7 +370,7 @@ def _all_orgs(store) -> list[str]:
 @router.get("/assets")
 def list_assets(workspace_id: Optional[str] = None, include_removed: bool = False, p: Principal = Depends(current_principal)):
     store, org = _store(), p.organization_id
-    rows = list_in_workspaces(p, "assets", workspace_id)
+    rows = list_in_workspaces(p, "cc_assets", workspace_id)
     links: dict[str, list[str]] = {}
     for pa in store.list("project_assets", organization_id=org):
         if pa.get("source") != "removed":
@@ -393,7 +393,7 @@ class AssetPatch(BaseModel):
 @router.get("/assets/{asset_id}")
 def get_asset(asset_id: str, p: Principal = Depends(current_principal)):
     store, org = _store(), p.organization_id
-    a = get_in_workspace(p, "assets", asset_id)
+    a = get_in_workspace(p, "cc_assets", asset_id)
     links = [l for l in store.list("project_assets", organization_id=org, asset_id=asset_id) if l.get("source") != "removed"]
     events = sorted(store.list("activity_events", organization_id=org, workspace_id=a["workspace_id"], asset_id=asset_id),
                     key=lambda e: str(e.get("occurred_at")), reverse=True)[:30]
@@ -404,11 +404,11 @@ def get_asset(asset_id: str, p: Principal = Depends(current_principal)):
 
 @router.patch("/assets/{asset_id}")
 def patch_asset(asset_id: str, body: AssetPatch, p: Principal = Depends(current_principal)):
-    get_in_workspace(p, "assets", asset_id, minimum=WS_EDITOR)
+    get_in_workspace(p, "cc_assets", asset_id, minimum=WS_EDITOR)
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
     if "description" in patch:
         patch["description_manual"] = True   # survives the next sync (PRD 4.4)
-    row = _store().update("assets", asset_id, organization_id=p.organization_id, patch=patch)
+    row = _store().update("cc_assets", asset_id, organization_id=p.organization_id, patch=patch)
     audit(p, "cc.asset.update", detail=f"{asset_id} {','.join(patch)}")
     return row
 
@@ -417,7 +417,7 @@ def patch_asset(asset_id: str, body: AssetPatch, p: Principal = Depends(current_
 def list_inbox(workspace_id: Optional[str] = None, p: Principal = Depends(current_principal)):
     store, org = _store(), p.organization_id
     items = [i for i in list_in_workspaces(p, "inbox_items", workspace_id) if i["status"] == "open"]
-    return [{**i, "asset": store.get("assets", i["asset_id"], organization_id=org) if i.get("asset_id") else None} for i in items]
+    return [{**i, "asset": store.get("cc_assets", i["asset_id"], organization_id=org) if i.get("asset_id") else None} for i in items]
 
 
 class InboxAction(BaseModel):
@@ -450,7 +450,7 @@ def act_inbox(item_id: str, body: InboxAction, p: Principal = Depends(current_pr
         return {"ok": True, "project_id": project_id}
     if body.action == "mark_shared":
         if item.get("asset_id"):
-            store.update("assets", item["asset_id"], organization_id=org, patch={"shared": True})
+            store.update("cc_assets", item["asset_id"], organization_id=org, patch={"shared": True})
         store.update("inbox_items", item_id, organization_id=org, patch={"status": "resolved"})
         return {"ok": True}
     raise HTTPException(status_code=422, detail="unknown action")
@@ -585,11 +585,11 @@ def external_report(body: ReportIn, x_report_token: Optional[str] = Header(defau
         raise HTTPException(status_code=401, detail="invalid report token")
     org = ws["organization_id"]
     ext = f"service:{body.service}"
-    assets = [a for a in store.list("assets", organization_id=org, workspace_id=ws["id"], provider="reporter") if a["external_id"] == ext]
+    assets = [a for a in store.list("cc_assets", organization_id=org, workspace_id=ws["id"], provider="reporter") if a["external_id"] == ext]
     if assets:
-        asset = store.update("assets", assets[0]["id"], organization_id=org, patch={"last_seen_at": iso(), "state": body.result})
+        asset = store.update("cc_assets", assets[0]["id"], organization_id=org, patch={"last_seen_at": iso(), "state": body.result})
     else:
-        asset = store.insert("assets", {"id": new_id("ast"), "organization_id": org, "workspace_id": ws["id"], "connection_id": None,
+        asset = store.insert("cc_assets", {"id": new_id("ast"), "organization_id": org, "workspace_id": ws["id"], "connection_id": None,
                                         "external_id": ext, "kind": "service", "name": body.service, "provider": "reporter",
                                         "environment": body.environment, "state": body.result, "url": body.url, "last_seen_at": iso(), "created_at": iso()})
         store.insert("inbox_items", {"id": new_id("inb"), "organization_id": org, "workspace_id": ws["id"], "asset_id": asset["id"],

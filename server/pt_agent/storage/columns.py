@@ -62,7 +62,7 @@ TYPED: dict[str, set[str]] = {
     "cc_projects": {"id", "organization_id", "workspace_id", "name", "owner", "importance", "status", "environment", "created_at"},
     "connections": {"id", "organization_id", "workspace_id", "provider", "account_label", "status", "last_sync_at", "last_attempt_at", "last_error", "created_at"},
     "provider_keys": {"id", "organization_id", "workspace_id", "name", "provider", "account_label", "masked", "scope", "created_at"},
-    "assets": {"id", "organization_id", "workspace_id", "connection_id", "external_id", "kind", "name", "provider", "environment", "state", "url", "description", "last_seen_at", "source_updated_at", "removed_at", "created_at"},
+    "cc_assets": {"id", "organization_id", "workspace_id", "connection_id", "external_id", "kind", "name", "provider", "environment", "state", "url", "description", "last_seen_at", "source_updated_at", "removed_at", "created_at"},
     "project_assets": {"id", "organization_id", "project_id", "asset_id", "source", "created_at"},
     "work_sessions": {"id", "organization_id", "workspace_id", "project_id", "title", "goal", "owner", "tool", "status", "external_id", "started_at", "ended_at", "created_at"},
     "activity_events": {"id", "organization_id", "workspace_id", "connection_id", "asset_id", "project_id", "session_id", "external_id", "kind", "result", "environment", "title", "url", "occurred_at", "ingested_at", "created_at"},

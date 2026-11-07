@@ -64,7 +64,7 @@ create table if not exists provider_keys (
   data             jsonb not null default '{}'::jsonb
 );
 
-create table if not exists assets (
+create table if not exists cc_assets (
   id                text primary key,
   organization_id   text not null,
   workspace_id      text not null references workspaces(id) on delete cascade,
@@ -89,7 +89,7 @@ create table if not exists project_assets (
   id               text primary key,
   organization_id  text not null,
   project_id       text not null references cc_projects(id) on delete cascade,
-  asset_id         text not null references assets(id) on delete cascade,
+  asset_id         text not null references cc_assets(id) on delete cascade,
   source           text not null default 'manual',      -- manual | auto | suggested
   created_at       timestamptz not null default now(),
   data             jsonb not null default '{}'::jsonb,
@@ -118,7 +118,7 @@ create table if not exists activity_events (
   organization_id  text not null,
   workspace_id     text not null references workspaces(id) on delete cascade,
   connection_id    text references connections(id) on delete set null,
-  asset_id         text references assets(id) on delete set null,
+  asset_id         text references cc_assets(id) on delete set null,
   project_id       text references cc_projects(id) on delete set null,
   session_id       text references work_sessions(id) on delete set null,
   external_id      text not null,
@@ -138,7 +138,7 @@ create table if not exists inbox_items (
   id                     text primary key,
   organization_id        text not null,
   workspace_id           text not null references workspaces(id) on delete cascade,
-  asset_id               text references assets(id) on delete cascade,
+  asset_id               text references cc_assets(id) on delete cascade,
   kind                   text not null,                 -- new_asset | mismatch | duplicate | missing_source
   status                 text not null default 'open',  -- open | resolved | dismissed
   suggested_project_id   text,
@@ -208,7 +208,7 @@ create table if not exists alerts (
 create index if not exists idx_ws_org              on workspaces(organization_id);
 create index if not exists idx_cc_projects_ws      on cc_projects(organization_id, workspace_id);
 create index if not exists idx_connections_ws      on connections(organization_id, workspace_id);
-create index if not exists idx_assets_ws           on assets(organization_id, workspace_id);
+create index if not exists idx_assets_ws           on cc_assets(organization_id, workspace_id);
 create index if not exists idx_project_assets_p    on project_assets(organization_id, project_id);
 create index if not exists idx_sessions_project    on work_sessions(organization_id, project_id);
 create index if not exists idx_events_ws_time      on activity_events(organization_id, workspace_id, occurred_at desc);
@@ -222,7 +222,7 @@ declare t text;
 begin
   for t in
     select unnest(array['workspaces','workspace_members','cc_projects','connections','provider_keys',
-      'assets','project_assets','work_sessions','activity_events','inbox_items','cost_entries',
+      'cc_assets','project_assets','work_sessions','activity_events','inbox_items','cost_entries',
       'cc_agents','agent_runs','alerts'])
   loop
     execute format('alter table %I enable row level security', t);

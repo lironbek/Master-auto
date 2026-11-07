@@ -1,0 +1,1015 @@
+{
+ "taken_at": "2026-11-07",
+ "source": "GitHub repos, Vercel projects (team liron's projects), Supabase projects via MCP",
+ "vercel_team_slug": "lirons-projects-afcef793",
+ "github": [
+  {
+   "full_name": "lironbek/corewise-crm",
+   "pushed_at": "2026-11-07T11:03:27Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/corewise-crm"
+  },
+  {
+   "full_name": "lironbek/cars",
+   "pushed_at": "2026-11-07T06:48:47Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/cars"
+  },
+  {
+   "full_name": "lironbek/lawflow",
+   "pushed_at": "2026-11-06T17:35:16Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/lawflow"
+  },
+  {
+   "full_name": "AnibTech/comax-design",
+   "pushed_at": "2026-11-06T17:26:55Z",
+   "visibility": "private",
+   "url": "https://github.com/AnibTech/comax-design"
+  },
+  {
+   "full_name": "lironbek/nevemichael",
+   "pushed_at": "2026-11-06T08:45:11Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/nevemichael"
+  },
+  {
+   "full_name": "lironbek/emunah-harmony-system",
+   "pushed_at": "2026-11-06T08:39:33Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/emunah-harmony-system"
+  },
+  {
+   "full_name": "lironbek/walkin",
+   "pushed_at": "2026-11-06T06:07:30Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/walkin"
+  },
+  {
+   "full_name": "lironbek/zemoran",
+   "pushed_at": "2026-11-05T17:40:14Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/zemoran"
+  },
+  {
+   "full_name": "lironbek/corewise-lead-magnet",
+   "pushed_at": "2026-11-05T16:47:29Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/corewise-lead-magnet"
+  },
+  {
+   "full_name": "lironbek/buildflow-app",
+   "pushed_at": "2026-11-04T09:20:58Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/buildflow-app"
+  },
+  {
+   "full_name": "lironbek/comax-shift",
+   "pushed_at": "2026-11-04T08:59:52Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/comax-shift"
+  },
+  {
+   "full_name": "lironbek/marketing-studio",
+   "pushed_at": "2026-11-03T09:23:30Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/marketing-studio"
+  },
+  {
+   "full_name": "lironbek/ComaxCommerce",
+   "pushed_at": "2026-11-02T18:29:31Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/ComaxCommerce"
+  },
+  {
+   "full_name": "lironbek/dealhunters",
+   "pushed_at": "2026-10-31T06:51:24Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/dealhunters"
+  },
+  {
+   "full_name": "lironbek/petmatch-app",
+   "pushed_at": "2026-10-28T21:24:17Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/petmatch-app"
+  },
+  {
+   "full_name": "lironbek/yaara-turim",
+   "pushed_at": "2026-10-25T10:13:32Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/yaara-turim"
+  },
+  {
+   "full_name": "lironbek/bekman-bakery",
+   "pushed_at": "2026-10-22T17:47:22Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/bekman-bakery"
+  },
+  {
+   "full_name": "lironbek/siksak",
+   "pushed_at": "2026-10-22T17:45:54Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/siksak"
+  },
+  {
+   "full_name": "lironbek/comax-connector",
+   "pushed_at": "2026-10-19T11:18:47Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/comax-connector"
+  },
+  {
+   "full_name": "lironbek/flower-sales",
+   "pushed_at": "2026-10-04T14:38:23Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/flower-sales"
+  },
+  {
+   "full_name": "lironbek/mesayaat",
+   "pushed_at": "2026-10-04T12:30:14Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/mesayaat"
+  },
+  {
+   "full_name": "lironbek/7015",
+   "pushed_at": "2026-09-30T23:26:08Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/7015"
+  },
+  {
+   "full_name": "lironbek/gdud7015",
+   "pushed_at": "2026-09-27T13:28:57Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/gdud7015"
+  },
+  {
+   "full_name": "lironbek/bekman-it-desk",
+   "pushed_at": "2026-09-19T15:37:48Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/bekman-it-desk"
+  },
+  {
+   "full_name": "lironbek/comax-prd-studio",
+   "pushed_at": "2026-09-17T19:39:21Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/comax-prd-studio"
+  },
+  {
+   "full_name": "lironbek/comax-easydo",
+   "pushed_at": "2026-09-16T18:03:09Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/comax-easydo"
+  },
+  {
+   "full_name": "lironbek/comax-claude-plugins",
+   "pushed_at": "2026-09-13T10:12:28Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/comax-claude-plugins"
+  },
+  {
+   "full_name": "lironbek/bizflow",
+   "pushed_at": "2026-09-04T12:52:55Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/bizflow"
+  },
+  {
+   "full_name": "lironbek/homechef-hub",
+   "pushed_at": "2026-08-28T17:39:42Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/homechef-hub"
+  },
+  {
+   "full_name": "lironbek/corewise-marketing",
+   "pushed_at": "2026-08-22T20:38:24Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/corewise-marketing"
+  },
+  {
+   "full_name": "lironbek/nevemichael-site",
+   "pushed_at": "2026-08-19T18:27:32Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/nevemichael-site"
+  },
+  {
+   "full_name": "lironbek/comax-skill-daily",
+   "pushed_at": "2026-08-06T20:19:59Z",
+   "visibility": "public",
+   "url": "https://github.com/lironbek/comax-skill-daily"
+  },
+  {
+   "full_name": "lironbek/goldenberg-crm",
+   "pushed_at": "2026-07-31T10:20:30Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/goldenberg-crm"
+  },
+  {
+   "full_name": "lironbek/shlomit-cpa",
+   "pushed_at": "2026-07-30T16:03:57Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/shlomit-cpa"
+  },
+  {
+   "full_name": "lironbek/kolan-ins",
+   "pushed_at": "2026-07-27T07:41:42Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/kolan-ins"
+  },
+  {
+   "full_name": "lironbek/docflow-hub",
+   "pushed_at": "2026-07-21T08:53:57Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/docflow-hub"
+  },
+  {
+   "full_name": "lironbek/smartbell",
+   "pushed_at": "2026-07-08T18:38:47Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/smartbell"
+  },
+  {
+   "full_name": "lironbek/comax-aura-insights",
+   "pushed_at": "2026-06-16T14:48:19Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/comax-aura-insights"
+  },
+  {
+   "full_name": "lironbek/SHLOMIT",
+   "pushed_at": "2026-06-16T07:48:15Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/SHLOMIT"
+  },
+  {
+   "full_name": "lironbek/billing-ledger-manager",
+   "pushed_at": "2026-06-09T07:23:41Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/billing-ledger-manager"
+  },
+  {
+   "full_name": "lironbek/flowiq-smart-cash-dashboard",
+   "pushed_at": "2026-06-06T16:30:32Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/flowiq-smart-cash-dashboard"
+  },
+  {
+   "full_name": "lironbek/billing-knowledge-hub",
+   "pushed_at": "2026-05-31T09:55:16Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/billing-knowledge-hub"
+  },
+  {
+   "full_name": "lironbek/planogrma",
+   "pushed_at": "2026-05-29T08:46:24Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/planogrma"
+  },
+  {
+   "full_name": "lironbek/executive-compass-dash",
+   "pushed_at": "2026-05-15T21:00:35Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/executive-compass-dash"
+  },
+  {
+   "full_name": "lironbek/comax-projects",
+   "pushed_at": "2026-05-15T10:52:47Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/comax-projects"
+  },
+  {
+   "full_name": "lironbek/comax-connect-hub",
+   "pushed_at": "2026-05-14T19:20:36Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/comax-connect-hub"
+  },
+  {
+   "full_name": "lironbek/pizza-shop-billing",
+   "pushed_at": "2026-05-14T13:38:33Z",
+   "visibility": "public",
+   "url": "https://github.com/lironbek/pizza-shop-billing"
+  },
+  {
+   "full_name": "lironbek/asor-hr-suite",
+   "pushed_at": "2026-04-30T18:17:01Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/asor-hr-suite"
+  },
+  {
+   "full_name": "lironbek/print-preview-master",
+   "pushed_at": "2026-04-28T12:45:25Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/print-preview-master"
+  },
+  {
+   "full_name": "lironbek/task-budget-pulse",
+   "pushed_at": "2026-04-26T06:22:38Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/task-budget-pulse"
+  },
+  {
+   "full_name": "lironbek/legal",
+   "pushed_at": "2026-04-13T04:15:43Z",
+   "visibility": "public",
+   "url": "https://github.com/lironbek/legal"
+  },
+  {
+   "full_name": "lironbek/eventpro-hub",
+   "pushed_at": "2026-04-11T03:31:57Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/eventpro-hub"
+  },
+  {
+   "full_name": "lironbek/family-trip-planner",
+   "pushed_at": "2026-03-19T06:44:54Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/family-trip-planner"
+  },
+  {
+   "full_name": "lironbek/shift-buddy-heb",
+   "pushed_at": "2026-03-19T06:36:42Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/shift-buddy-heb"
+  },
+  {
+   "full_name": "lironbek/mall-manager-plus",
+   "pushed_at": "2026-03-09T08:20:32Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/mall-manager-plus"
+  },
+  {
+   "full_name": "lironbek/tato",
+   "pushed_at": "2026-03-05T08:27:34Z",
+   "visibility": "public",
+   "url": "https://github.com/lironbek/tato"
+  },
+  {
+   "full_name": "lironbek/growth-vista-pro",
+   "pushed_at": "2026-03-03T10:13:05Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/growth-vista-pro"
+  },
+  {
+   "full_name": "lironbek/sitmatch-tlv",
+   "pushed_at": "2026-02-22T18:40:10Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/sitmatch-tlv"
+  },
+  {
+   "full_name": "lironbek/combox-connect",
+   "pushed_at": "2026-02-21T11:46:45Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/combox-connect"
+  },
+  {
+   "full_name": "lironbek/hazera-nexus-ai",
+   "pushed_at": "2026-02-15T07:45:46Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/hazera-nexus-ai"
+  },
+  {
+   "full_name": "lironbek/compass-app",
+   "pushed_at": "2026-02-15T05:05:14Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/compass-app"
+  },
+  {
+   "full_name": "lironbek/mini-erp",
+   "pushed_at": "2026-02-12T17:07:43Z",
+   "visibility": "public",
+   "url": "https://github.com/lironbek/mini-erp"
+  },
+  {
+   "full_name": "ariel198989/nevemichael",
+   "pushed_at": "2026-02-12T08:18:44Z",
+   "visibility": "private",
+   "url": "https://github.com/ariel198989/nevemichael"
+  },
+  {
+   "full_name": "lironbek/mamtal-field-manager",
+   "pushed_at": "2026-01-29T19:58:29Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/mamtal-field-manager"
+  },
+  {
+   "full_name": "lironbek/landing-page-creator",
+   "pushed_at": "2026-01-24T20:58:59Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/landing-page-creator"
+  },
+  {
+   "full_name": "lironbek/sticker",
+   "pushed_at": "2026-01-13T22:03:05Z",
+   "visibility": "public",
+   "url": "https://github.com/lironbek/sticker"
+  },
+  {
+   "full_name": "lironbek/school_harmony_hub-1cf657e6",
+   "pushed_at": "2026-01-03T16:10:44Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/school_harmony_hub-1cf657e6"
+  },
+  {
+   "full_name": "lironbek/School_Harmony_Hub",
+   "pushed_at": "2026-01-03T16:00:46Z",
+   "visibility": "public",
+   "url": "https://github.com/lironbek/School_Harmony_Hub"
+  },
+  {
+   "full_name": "ariel198989/onboard-hero",
+   "pushed_at": "2025-12-23T13:10:39Z",
+   "visibility": "private",
+   "url": "https://github.com/ariel198989/onboard-hero"
+  },
+  {
+   "full_name": "lironbek/smart-financial-navigator",
+   "pushed_at": "2025-09-04T10:59:40Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/smart-financial-navigator"
+  },
+  {
+   "full_name": "lironbek/rent-space-flow",
+   "pushed_at": "2025-07-16T10:13:34Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/rent-space-flow"
+  },
+  {
+   "full_name": "lironbek/tech-assist-plus",
+   "pushed_at": "2025-07-14T12:46:14Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/tech-assist-plus"
+  },
+  {
+   "full_name": "lironbek/legalflow-office-suite",
+   "pushed_at": "2025-07-12T15:19:41Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/legalflow-office-suite"
+  },
+  {
+   "full_name": "lironbek/sickday-sense-excel-vault",
+   "pushed_at": "2025-07-07T18:50:57Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/sickday-sense-excel-vault"
+  },
+  {
+   "full_name": "lironbek/biz-solution-stories",
+   "pushed_at": "2025-04-07T07:53:48Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/biz-solution-stories"
+  },
+  {
+   "full_name": "lironbek/case-collaborate",
+   "pushed_at": "2025-03-22T14:34:15Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/case-collaborate"
+  },
+  {
+   "full_name": "lironbek/tazrim",
+   "pushed_at": "2025-03-20T20:04:42Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/tazrim"
+  },
+  {
+   "full_name": "lironbek/turing-timing-scheduler",
+   "pushed_at": "2025-03-13T19:32:37Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/turing-timing-scheduler"
+  },
+  {
+   "full_name": "lironbek/public",
+   "pushed_at": "2025-03-10T19:41:42Z",
+   "visibility": "public",
+   "url": "https://github.com/lironbek/public"
+  },
+  {
+   "full_name": "lironbek/attendify-ecosystem",
+   "pushed_at": "2025-01-11T20:19:23Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/attendify-ecosystem"
+  },
+  {
+   "full_name": "lironbek/vehicle-status-manager",
+   "pushed_at": "2025-01-08T20:53:19Z",
+   "visibility": "private",
+   "url": "https://github.com/lironbek/vehicle-status-manager"
+  },
+  {
+   "full_name": "lironbek/finovate",
+   "pushed_at": "2024-07-17T11:39:33Z",
+   "visibility": "public",
+   "url": "https://github.com/lironbek/finovate"
+  }
+ ],
+ "vercel": [
+  {
+   "id": "prj_j1L5LbbhvA4wONXoZaheJ6Xvg6tG",
+   "name": "corewise-crm",
+   "updatedAt": 1794049451978
+  },
+  {
+   "id": "prj_DTrnnNxJH1xqssOIkDerf0JfjXEt",
+   "name": "pt",
+   "updatedAt": 1794034259980
+  },
+  {
+   "id": "prj_ZYsQBXwPPfBMYbxdKw5zQE3l1ff2",
+   "name": "pt-web",
+   "updatedAt": 1794000831687
+  },
+  {
+   "id": "prj_QrHy81OXUk5HTeDurEydsBV2LoyE",
+   "name": "lawflow",
+   "updatedAt": 1793986510745
+  },
+  {
+   "id": "prj_PDEb8nAodyJcvPepc68al7gLRbEW",
+   "name": "lawflow-api",
+   "updatedAt": 1793986473782
+  },
+  {
+   "id": "prj_CayhRywEV2lJIE0vooMWUBb4nKRU",
+   "name": "corewise-diagnostic",
+   "updatedAt": 1793961759122
+  },
+  {
+   "id": "prj_KJL6LuJdQrougbmV5RUCY1BKS3G3",
+   "name": "nevemichael",
+   "updatedAt": 1793954750382
+  },
+  {
+   "id": "prj_iY1MynTD1jrvcoGnzujgkzlO4wVU",
+   "name": "nevemichael-api",
+   "updatedAt": 1793954727842
+  },
+  {
+   "id": "prj_CfHWquxmS3TAiI92ek93qjsxjcBE",
+   "name": "emunah-harmony-system",
+   "updatedAt": 1793954404013
+  },
+  {
+   "id": "prj_4ZCGHQDvDCRmqMcStpzxqg4b0HXx",
+   "name": "zemoran",
+   "updatedAt": 1793900428681
+  },
+  {
+   "id": "prj_ys0DbyNa7eq1FRl4ibDC6HQLNdxv",
+   "name": "walkin",
+   "updatedAt": 1793820574679
+  },
+  {
+   "id": "prj_bmpUezQ3EJVRd4oeJYQLnMWLJSV6",
+   "name": "buildflow-app",
+   "updatedAt": 1793784078661
+  },
+  {
+   "id": "prj_zVSOUu80LyC8GmaIXEBwN5bYr3zX",
+   "name": "comax-shift",
+   "updatedAt": 1793782831336
+  },
+  {
+   "id": "prj_Lb9HCPXawCVtIhdyFUQgRmpizGg3",
+   "name": "comax-shift-api",
+   "updatedAt": 1793782813674
+  },
+  {
+   "id": "prj_U0dNPmLtueqapvjdv6UEtVq4R32u",
+   "name": "marketing-studio",
+   "updatedAt": 1793697912639
+  },
+  {
+   "id": "prj_pt4YKAs9H37NJFgYaCNCGjVIAslB",
+   "name": "excel-reorder",
+   "updatedAt": 1793683533161
+  },
+  {
+   "id": "prj_nm9cj0W1kIjzpoqyId62P1gcSRMU",
+   "name": "comax-signage-api",
+   "updatedAt": 1793514233377
+  },
+  {
+   "id": "prj_ZWhv2Hk6Uxhn3mWp9ZhKa5BQnpqm",
+   "name": "mesayaat-api",
+   "updatedAt": 1793470852955
+  },
+  {
+   "id": "prj_nWFgY6oAwRreymO6H9Ov7DOsNIW2",
+   "name": "dealhunters",
+   "updatedAt": 1793429507271
+  },
+  {
+   "id": "prj_DYhDErQXPpWHjivf0koJOtIHXDsu",
+   "name": "liron-office",
+   "updatedAt": 1793376843313
+  },
+  {
+   "id": "prj_YBCWy7tqU3JkGsmUNLKd6u8bUPxr",
+   "name": "petmatch-api",
+   "updatedAt": 1793222676035
+  },
+  {
+   "id": "prj_WvtTGVwpAt5Edjrow5nUzNL2n9We",
+   "name": "petmatch-web",
+   "updatedAt": 1793222670748
+  },
+  {
+   "id": "prj_mmcey1enLRnjwBrHYC255uAQEh2b",
+   "name": "yaara-turim",
+   "updatedAt": 1792925337617
+  },
+  {
+   "id": "prj_tFYcVxPFv5OB1LrjEHnbiB5WeWOx",
+   "name": "yaara-turim-api",
+   "updatedAt": 1792925309006
+  },
+  {
+   "id": "prj_ing7T2NPcKWc6JSpdytYR3Y5HTo9",
+   "name": "bekman-bakery",
+   "updatedAt": 1792691300662
+  },
+  {
+   "id": "prj_W4aHdgFEnNbDbUf8KPYxfZkzDZj7",
+   "name": "siksak",
+   "updatedAt": 1792691182635
+  },
+  {
+   "id": "prj_qk8FTzY9gzyZpE7WC0ESou1iQObd",
+   "name": "siksak-api",
+   "updatedAt": 1792691174113
+  },
+  {
+   "id": "prj_DrE1cdDRuJay4Cs44DnvPiEFCUXH",
+   "name": "comax-connector-api",
+   "updatedAt": 1792408749566
+  },
+  {
+   "id": "prj_JQxsrHbw33Uk8JTEseU3nvzABs5O",
+   "name": "comax-connector-app",
+   "updatedAt": 1792408739403
+  },
+  {
+   "id": "prj_p0qMqvS5c51FKf1aMzZqPwiAXtU2",
+   "name": "kashabot",
+   "updatedAt": 1792309297154
+  },
+  {
+   "id": "prj_2kPK72F9sZrDqYMDYhVeksFPYURs",
+   "name": "asor-hr-suite",
+   "updatedAt": 1792309297154
+  },
+  {
+   "id": "prj_DvtRy6fmxOe2uX9Wkh12npQfEB6e",
+   "name": "buildflow",
+   "updatedAt": 1792075815161
+  },
+  {
+   "id": "prj_6xl1I9GhQXpgV38GJwRXVWI3slAh",
+   "name": "gdud7015",
+   "updatedAt": 1790409396369
+  },
+  {
+   "id": "prj_7YnhCtEuChshAnG1TJtA2HV7u5Dg",
+   "name": "bekman-it-desk",
+   "updatedAt": 1789832282440
+  },
+  {
+   "id": "prj_OAgvO13e2rCRPeqkX9hrKH2NbDGk",
+   "name": "karin-tower",
+   "updatedAt": 1789821697380
+  },
+  {
+   "id": "prj_0R8e7cgXHCV9mcDCEWgMzQpJyYoo",
+   "name": "comax-prd-studio",
+   "updatedAt": 1789673994419
+  },
+  {
+   "id": "prj_7b4WUpqJL2w2jfeC68iK4F2NwG9U",
+   "name": "comax-easydo",
+   "updatedAt": 1789581792636
+  },
+  {
+   "id": "prj_GdmnMiJ5jYypiNoZYP7izlTjbnBs",
+   "name": "comax-easydo-api",
+   "updatedAt": 1789581792608
+  },
+  {
+   "id": "prj_d3HZT8Ly3YTqBqnpYPK2F5HlzA7X",
+   "name": "mesayaat",
+   "updatedAt": 1789310262936
+  },
+  {
+   "id": "prj_XDMRBevF6ABHc4tHiDcpBCkCna38",
+   "name": "comax-ai",
+   "updatedAt": 1789068490034
+  },
+  {
+   "id": "prj_dmUybQXAaBZo1cuL17UNAFTkFUZl",
+   "name": "comax-ai-api",
+   "updatedAt": 1789068483250
+  },
+  {
+   "id": "prj_3GTP7Q2eqiTolhPgliopHbFnHksy",
+   "name": "bizflow-frontend",
+   "updatedAt": 1788526396314
+  },
+  {
+   "id": "prj_irQmAhVvVEu6MN8s9xsdbutL9qkj",
+   "name": "kashabot-api",
+   "updatedAt": 1787638574281
+  },
+  {
+   "id": "prj_4b1AU5vYyc0Y9r9CJrZw0covlNig",
+   "name": "corewise-marketing",
+   "updatedAt": 1787431133949
+  },
+  {
+   "id": "prj_J6x4Oy12WLy2VfRRVBdsgBN1MRZw",
+   "name": "corewise-marketing-api",
+   "updatedAt": 1787431121712
+  },
+  {
+   "id": "prj_XYkVGexaSrZ1wpababm09viOwnoW",
+   "name": "nevemichael-site",
+   "updatedAt": 1787164084695
+  },
+  {
+   "id": "prj_HaoUL5dqG4iJjS0c5Fa8belMhqxJ",
+   "name": "petmatch",
+   "updatedAt": 1786873354398
+  },
+  {
+   "id": "prj_7exkAUyK1An3cifsIHhlujt0cfXl",
+   "name": "comax-skill-daily",
+   "updatedAt": 1786047605839
+  },
+  {
+   "id": "prj_CEnpuN1NrDNc3yM89GuD2Nt0mgXL",
+   "name": "shlomit-folio",
+   "updatedAt": 1785563000073
+  },
+  {
+   "id": "prj_6TypXKBcgMFBYS1W9Jsav7sjGmN1",
+   "name": "goldenberg-crm",
+   "updatedAt": 1785493267355
+  },
+  {
+   "id": "prj_0Ttb2MSSannVEt0vzaTblecGj5sA",
+   "name": "goldenberg-api",
+   "updatedAt": 1785493262935
+  },
+  {
+   "id": "prj_3yS57JIwg1l79Srr0tEjt3o44Lfd",
+   "name": "shlomit-cpa",
+   "updatedAt": 1785427475536
+  },
+  {
+   "id": "prj_duZfEZl2jedlqMV322yOPZwtJhKt",
+   "name": "bizflow-backend",
+   "updatedAt": 1785397205829
+  },
+  {
+   "id": "prj_2N5dFLLhWTUCBwPB5X5Ug0TI41TE",
+   "name": "sperger-law-redesign",
+   "updatedAt": 1785326560763
+  },
+  {
+   "id": "prj_0ELTLcEo1eSYsjiyFiUMULXL6wRo",
+   "name": "kolan-ins",
+   "updatedAt": 1785140340133
+  },
+  {
+   "id": "prj_Zov0ktiWHdXA20tXIzrc6274MFPG",
+   "name": "comax-translate",
+   "updatedAt": 1785139098221
+  },
+  {
+   "id": "prj_DaM1gw7IhkiH5QU7TzevCn0v1qNv",
+   "name": "comaxtr-api",
+   "updatedAt": 1785135727807
+  },
+  {
+   "id": "prj_CAwCDv8ADMPmmEF6VWWQIN3Rr3bh",
+   "name": "docflow-hub",
+   "updatedAt": 1784624057108
+  },
+  {
+   "id": "prj_4GETjmdMjjmcaXV3YCp2RbLUvUyr",
+   "name": "comax-imports",
+   "updatedAt": 1784030929053
+  },
+  {
+   "id": "prj_N5hgI2igrHZhbaRCRCba4wkGYW3e",
+   "name": "remote-hub",
+   "updatedAt": 1783952441375
+  },
+  {
+   "id": "prj_A3MIRwVYAWOaygwVLlW7EK7oQqG3",
+   "name": "smartbell",
+   "updatedAt": 1783503355790
+  },
+  {
+   "id": "prj_vu9sR9YtTSK22XWRxBfXkABkYMUj",
+   "name": "comax-aura-insights",
+   "updatedAt": 1781621304016
+  },
+  {
+   "id": "prj_HNCpoCvxCbt6lD2f8ljqvOD5BgWb",
+   "name": "flowiq-smart-cash-dashboard",
+   "updatedAt": 1780763455237
+  },
+  {
+   "id": "prj_cj71unzM9KBNLvCAA5jVfzbmZpqY",
+   "name": "planogrma",
+   "updatedAt": 1780046734325
+  },
+  {
+   "id": "prj_th0IiqxqENfmk7Kbl4dlmZT2WFKq",
+   "name": "executive-compass-dash",
+   "updatedAt": 1778878868691
+  },
+  {
+   "id": "prj_YQHEb7mvMEkYfMIR5bs66oCYXzkP",
+   "name": "comax-projects",
+   "updatedAt": 1778842421673
+  },
+  {
+   "id": "prj_splCQ80PneiCEKQJ1Ee7KrqBbyVG",
+   "name": "buba",
+   "updatedAt": 1778840156433
+  },
+  {
+   "id": "prj_1DyZb2ykTQ2Et0m4VrtM7BxzONjc",
+   "name": "eventpro-hub",
+   "updatedAt": 1778527084271
+  },
+  {
+   "id": "prj_igqia7ZtpL890RuvHoDwCJLtpgXF",
+   "name": "comax-connect-hub",
+   "updatedAt": 1778527084253
+  },
+  {
+   "id": "prj_O4owQKdEYx3F4n2S1naM1kH8eDFx",
+   "name": "146",
+   "updatedAt": 1778527084217
+  },
+  {
+   "id": "prj_nluLeIZgYRr5KkuP3tVC14vKgtmP",
+   "name": "tato",
+   "updatedAt": 1778527084103
+  },
+  {
+   "id": "prj_fydWIEBxS1yPzuvYGSiNoR7ZCHYq",
+   "name": "comax-hub",
+   "updatedAt": 1778527084067
+  },
+  {
+   "id": "prj_AmbFrKbToRd8xCRg7gnUZdnfZdD9",
+   "name": "combox-connect",
+   "updatedAt": 1778527084047
+  },
+  {
+   "id": "prj_Trl913lARZZ2sd6TRNoahMvZgqKV",
+   "name": "mall-manager-plus",
+   "updatedAt": 1778527083989
+  },
+  {
+   "id": "prj_1ADP3kKeYGmRhFL6f5LoSvefyzkQ",
+   "name": "mini-erp",
+   "updatedAt": 1778527083970
+  },
+  {
+   "id": "prj_qdW0ParBAwEmkINPYFEhdF83vOxi",
+   "name": "sticker",
+   "updatedAt": 1778527083959
+  },
+  {
+   "id": "prj_wS3giWp28oFEXXjZQ979Z0VjAc36",
+   "name": "legal",
+   "updatedAt": 1778527083951
+  },
+  {
+   "id": "prj_u4Dvcp1wIR5L6KYOyKXSiSbTIqeK",
+   "name": "mamtal-field-manager",
+   "updatedAt": 1778527083935
+  },
+  {
+   "id": "prj_IuS2KMTkKOSfue63u8LOsRLcx0l4",
+   "name": "homechef-hub",
+   "updatedAt": 1778527083933
+  },
+  {
+   "id": "prj_AvjAca6vtgjBvr26Krl2SKUUccZ5",
+   "name": "comax-invoice",
+   "updatedAt": 1778527083729
+  }
+ ],
+ "supabase": [
+  {
+   "id": "bmqcvsmabipyvtpbchyh",
+   "name": "Vehicle_7015",
+   "region": "eu-central-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2025-01-23T18:32:40Z"
+  },
+  {
+   "id": "wztugoswprizpiiequoc",
+   "name": "nevemichael",
+   "region": "eu-central-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2025-03-06T07:28:25Z"
+  },
+  {
+   "id": "wwrnrtstxtskvtjiserm",
+   "name": "sik-sak",
+   "region": "eu-north-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2025-07-16T10:36:17Z"
+  },
+  {
+   "id": "nefgjevgbeugczcjqoxi",
+   "name": "emunah-harmony",
+   "region": "eu-central-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2026-02-26T19:03:36Z"
+  },
+  {
+   "id": "zloidwbguijlzqibvzyj",
+   "name": "buildflow",
+   "region": "eu-central-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2026-10-30T13:36:34Z"
+  },
+  {
+   "id": "dghcfqtjuyejenpwldqf",
+   "name": "goldenberg",
+   "region": "eu-central-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2026-05-18T12:40:07Z"
+  },
+  {
+   "id": "piilswwgrhdhqjmuzfsc",
+   "name": "bizflow",
+   "region": "eu-central-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2026-07-06T07:31:25Z"
+  },
+  {
+   "id": "bqskckcobvcnztgpocqh",
+   "name": "corewise-marketing",
+   "region": "eu-central-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2026-08-22T12:08:22Z"
+  },
+  {
+   "id": "yuqilhmbselblcukqcok",
+   "name": "brandio-db",
+   "region": "eu-central-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2026-10-13T05:18:49Z"
+  },
+  {
+   "id": "cavnbgdwdojefcqmdowx",
+   "name": "corewise-crm",
+   "region": "eu-central-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2026-07-22T14:08:51Z"
+  },
+  {
+   "id": "tymiiibfdaulgncejiox",
+   "name": "bekman-bakery",
+   "region": "eu-central-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2026-10-17T20:04:32Z"
+  },
+  {
+   "id": "myzkjnyhxuvfpqfmfyui",
+   "name": "mesayaat",
+   "region": "eu-central-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2026-09-13T12:59:45Z"
+  },
+  {
+   "id": "vgjkqqpnixmjxcxysxgy",
+   "name": "docflow",
+   "region": "ap-southeast-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2026-01-15T19:10:47Z"
+  },
+  {
+   "id": "bsaqnqqsepgbgauzlbny",
+   "name": "comax-shift",
+   "region": "eu-central-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2026-10-25T14:28:31Z"
+  },
+  {
+   "id": "kplcwyxlayfxujivcinb",
+   "name": "dealhunters",
+   "region": "eu-central-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2026-10-27T08:40:30Z"
+  },
+  {
+   "id": "fwqfvuoyxseyotpfmevy",
+   "name": "pt",
+   "region": "eu-central-1",
+   "status": "ACTIVE_HEALTHY",
+   "created_at": "2026-11-07T05:58:20Z"
+  }
+ ]
+}

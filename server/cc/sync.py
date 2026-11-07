@@ -50,7 +50,7 @@ def run_connection_sync(store, org_id: str, connection: Row, *, actor: str = "sy
     except Exception as exc:  # network etc.
         return _fail(store, org_id, connection, "disconnected", f"{type(exc).__name__}: {exc}"[:300], summary)
 
-    existing = {a["external_id"]: a for a in store.list("assets", organization_id=org_id, workspace_id=ws, connection_id=connection["id"])}
+    existing = {a["external_id"]: a for a in store.list("cc_assets", organization_id=org_id, workspace_id=ws, connection_id=connection["id"])}
     seen: set[str] = set()
     ext_to_asset_id: dict[str, str] = {}
 
@@ -67,9 +67,9 @@ def run_connection_sync(store, org_id: str, connection: Row, *, actor: str = "sy
             # Manual description wins over provider description (PRD 4.4).
             if not cur.get("description_manual"):
                 patch["description"] = rec.description
-            row = store.update("assets", cur["id"], organization_id=org_id, patch=patch)
+            row = store.update("cc_assets", cur["id"], organization_id=org_id, patch=patch)
         else:
-            row = store.insert("assets", {"id": new_id("ast"), "organization_id": org_id, "workspace_id": ws,
+            row = store.insert("cc_assets", {"id": new_id("ast"), "organization_id": org_id, "workspace_id": ws,
                                           "connection_id": connection["id"], "external_id": rec.external_id,
                                           "description": rec.description, "created_at": iso(), **patch})
             _maybe_inbox(store, org_id, ws, row, summary)
@@ -80,7 +80,7 @@ def run_connection_sync(store, org_id: str, connection: Row, *, actor: str = "sy
     if not result.partial:
         for ext, cur in existing.items():
             if ext not in seen and not cur.get("removed_at"):
-                store.update("assets", cur["id"], organization_id=org_id, patch={"removed_at": iso(), "state": "removed_at_source"})
+                store.update("cc_assets", cur["id"], organization_id=org_id, patch={"removed_at": iso(), "state": "removed_at_source"})
                 _inbox(store, org_id, ws, cur["id"], "missing_source", "נעלם בסנכרון מלא עם אותו היקף הרשאה", summary)
                 summary["removed"] += 1
 
@@ -140,7 +140,7 @@ def _maybe_inbox(store, org_id, ws, asset: Row, summary) -> None:
     meta = asset.get("meta") or {}
     if asset["provider"] == "vercel" and meta.get("linked_repo"):
         # A Vercel project linked to a repo that is already assigned.
-        for repo in store.list("assets", organization_id=org_id, workspace_id=ws, provider="github", kind="repo"):
+        for repo in store.list("cc_assets", organization_id=org_id, workspace_id=ws, provider="github", kind="repo"):
             if repo["name"].lower() == meta["linked_repo"].lower():
                 pid = _assignment_index(store, org_id).get(repo["id"])
                 if pid:
