@@ -16,6 +16,7 @@ from pt_agent.models import Role
 from pt_agent.storage import get_store
 
 from . import agents as agent_engine
+from . import profile as profile_engine
 from . import sync as sync_engine
 from . import usage as usage_engine
 from .connectors import PROVIDERS, ConfigError, ConnectorError, build, validate_config
@@ -233,11 +234,46 @@ def get_project(project_id: str, p: Principal = Depends(current_principal)):
     usage_rows = usage_engine.filter_entries(store.list("usage_entries", organization_id=org, workspace_id=pr["workspace_id"], project_id=project_id),
                                              start=start, end=end, client_id=None, project_id=None, provider=None, interface=None)
     usage = usage_engine.summarize(usage_rows, {client["id"]: client} if client else {}, {pr["id"]: pr})
+    scans = sorted(store.list("project_scans", organization_id=org, project_id=project_id), key=lambda s: str(s.get("created_at")), reverse=True)
     return {"project": pr, "assets": assets, "events": events, "sessions": sessions, "costs": costs,
             "cost_month_usd": round(month_cost, 2), "agents": agents, "runs": runs,
             "connections": [conns[a["connection_id"]] for a in assets if a.get("connection_id") in conns and conns] if conns else [],
             "keys": keys, "pt_projects": pt_projects, "client": client,
-            "usage_month": {"totals": usage["totals"], "by_provider": usage["by_provider"], "by_interface": usage["by_interface"]}}
+            "usage_month": {"totals": usage["totals"], "by_provider": usage["by_provider"], "by_interface": usage["by_interface"]},
+            "profile": {"summary": pr.get("profile_summary"), "at": pr.get("profile_at"),
+                        "assets": [{"id": a["id"], "name": a["name"], "provider": a["provider"], "kind": a["kind"], "profile": a.get("profile")} for a in assets]},
+            "scans": [{k: v for k, v in s.items() if k != "findings"} for s in scans[:10]],
+            "last_scan": scans[0] if scans else None}
+
+
+@router.post("/projects/{project_id}/profile")
+def refresh_profile(project_id: str, p: Principal = Depends(current_principal)):
+    """Rebuild 'how is it built' for every asset of the project (read-only
+    provider calls through the workspace connections)."""
+    pr = get_in_workspace(p, "cc_projects", project_id, minimum=WS_EDITOR)
+    out = profile_engine.build_profile(_store(), p.organization_id, pr)
+    audit(p, "cc.project.profile", detail=f"{project_id} {len(out['assets'])} assets")
+    return out
+
+
+@router.post("/projects/{project_id}/scan")
+def scan_project(project_id: str, p: Principal = Depends(current_principal)):
+    """Health scan: deterministic findings from GitHub / Vercel / Supabase metadata."""
+    pr = get_in_workspace(p, "cc_projects", project_id, minimum=WS_EDITOR)
+    row = profile_engine.run_scan(_store(), p.organization_id, pr, actor=p.actor)
+    audit(p, "cc.project.scan", decision=row["grade"], detail=f"{project_id} {row['id']} {row['counts']}")
+    return row
+
+
+@router.get("/projects/{project_id}/scans")
+def list_scans(project_id: str, p: Principal = Depends(current_principal)):
+    get_in_workspace(p, "cc_projects", project_id)
+    return sorted(_store().list("project_scans", organization_id=p.organization_id, project_id=project_id), key=lambda s: str(s.get("created_at")), reverse=True)
+
+
+@router.get("/scans/{scan_id}")
+def get_scan(scan_id: str, p: Principal = Depends(current_principal)):
+    return get_in_workspace(p, "project_scans", scan_id)
 
 
 @router.patch("/projects/{project_id}")

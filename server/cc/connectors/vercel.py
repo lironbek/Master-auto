@@ -42,6 +42,53 @@ class VercelConnector:
             u = r.json().get("user", {})
             return {"account": u.get("username", ""), "capabilities": ["inventory", "deployments"]}
 
+    def project_profile(self, project_id: str) -> dict[str, Any]:
+        """How the Vercel project is set up: framework, root dir, env var NAMES
+        (never values), domains, latest production deployment, crons."""
+        out: dict[str, Any] = {"project_id": project_id}
+        with self._client() as c:
+            r = c.get(f"{API}/v9/projects/{project_id}", params=self._q())
+            if r.status_code >= 400:
+                raise classify_http_error(r)
+            p = r.json()
+            link = p.get("link") or {}
+            out.update({"name": p.get("name"), "framework": p.get("framework") or "", "node_version": p.get("nodeVersion", ""),
+                        "root_directory": p.get("rootDirectory") or "", "linked_repo": f"{link.get('org', '')}/{link.get('repo', '')}" if link.get("repo") else "",
+                        "production_branch": link.get("productionBranch", ""), "crons": [cr.get("path") for cr in (p.get("crons") or {}).get("definitions", [])] if isinstance(p.get("crons"), dict) else [],
+                        "protection": "vercel_auth" if (p.get("ssoProtection") or {}).get("enabled") else ("password" if (p.get("passwordProtection") or {}).get("enabled") else "none")})
+            r = c.get(f"{API}/v9/projects/{project_id}/env", params=self._q())
+            envs = r.json().get("envs", []) if r.status_code < 400 else []
+            out["env_names"] = sorted({e.get("key", "") for e in envs if e.get("key")})
+            out["env_plain_secret_like"] = sorted({e["key"] for e in envs if e.get("type") == "plain" and any(s in e.get("key", "").upper() for s in ("KEY", "SECRET", "TOKEN", "PASSWORD"))})
+            r = c.get(f"{API}/v9/projects/{project_id}/domains", params=self._q())
+            out["domains"] = [d.get("name") for d in r.json().get("domains", [])] if r.status_code < 400 else []
+            r = c.get(f"{API}/v6/deployments", params=self._q({"projectId": project_id, "limit": 1, "target": "production"}))
+            deps = r.json().get("deployments", []) if r.status_code < 400 else []
+            if deps:
+                d = deps[0]
+                out["last_production"] = {"state": (d.get("readyState") or d.get("state") or "").upper(), "at": _ms(d.get("createdAt") or d.get("created")),
+                                          "url": f"https://{d.get('url', '')}" if d.get("url") else "", "branch": (d.get("meta") or {}).get("githubCommitRef", "")}
+        return out
+
+    def project_health(self, profile: dict[str, Any]) -> list[dict[str, Any]]:
+        f: list[dict[str, Any]] = []
+
+        def add(sev, title, detail, fix=""):
+            f.append({"severity": sev, "title": title, "detail": detail, "fix": fix, "source": "vercel"})
+
+        lp = profile.get("last_production") or {}
+        if lp.get("state") == "ERROR":
+            add("high", "הפריסה האחרונה לייצור נכשלה", f"{lp.get('at', '')} · {lp.get('branch', '')}", "פתח את לוג הבנייה ב-Vercel ותקן לפני פריסה נוספת.")
+        if not lp:
+            add("info", "אין פריסת ייצור", "הפרויקט מעולם לא נפרס לייצור.")
+        if profile.get("env_plain_secret_like"):
+            add("medium", "סודות שמורים כ-plain ב-Vercel", ", ".join(profile["env_plain_secret_like"]), "הגדר אותם מחדש כ-Sensitive כדי שלא ייקראו מה-dashboard.")
+        if not profile.get("linked_repo"):
+            add("low", "הפרויקט לא מקושר לריפו", "פריסות ידניות בלבד.", "חבר את הפרויקט לריפו כדי לקבל פריסה אוטומטית ו-Preview לכל PR.")
+        if profile.get("protection") == "none" and profile.get("framework") in ("", None):
+            add("info", "ללא הגנת פריסה", "preview deployments פתוחים לכל מי שיש לו קישור.")
+        return f
+
     def sync(self, *, since: Optional[datetime] = None) -> SyncResult:
         res = SyncResult(coverage={"inventory": "full", "deployments": "full"})
         with self._client() as c:

@@ -44,6 +44,8 @@ def gather_context(store, org_id: str, project: Row) -> dict[str, Any]:
         "sessions": [{k: s.get(k) for k in ("title", "status", "tool", "owner")} for s in sessions if s["status"] in ("open", "waiting")],
         "costs_total_usd": round(sum(float(c.get("amount") or 0) for c in costs), 2),
         "alerts": [a.get("message") for a in alerts],
+        "architecture": (project.get("profile_summary") or {}).get("text", ""),
+        "last_scan": {"grade": project.get("last_scan_grade"), "at": project.get("last_scan_at")} if project.get("last_scan_grade") else None,
     }
 
 

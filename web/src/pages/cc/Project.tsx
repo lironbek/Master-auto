@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, type Asset, type CcClient, type CcProjectDetail } from '../../api'
+import { api, type Asset, type CcClient, type CcProjectDetail, type ProjectScan } from '../../api'
 import { Card, Empty, ErrorBox, Field, Mono, Spinner, Stat, Table } from '../../components/ui'
 import { EnvPill, EventRow, ExtLink, Facts, ResultPill, TonePill } from '../../components/cc'
 import { assetKind, costKind, environment, fmtDate, importance, metricLabel, provider, qty, runStatusCc, sessionStatus, sessionTool, t, usageProvider, usd } from '../../i18n'
 
-type Tab = 'summary' | 'assets' | 'sessions' | 'tools' | 'costs' | 'agents' | 'security'
-const tabs: [Tab, string][] = [['summary', 'סקירה'], ['assets', 'נכסים'], ['sessions', 'סשנים'], ['tools', 'כלים ומפתחות'], ['costs', 'עלויות'], ['agents', 'סוכנים'], ['security', 'סקרי אבטחה']]
+type Tab = 'summary' | 'build' | 'scans' | 'assets' | 'sessions' | 'tools' | 'costs' | 'agents' | 'security'
+const tabs: [Tab, string][] = [['summary', 'סקירה'], ['build', 'איך הוא בנוי'], ['scans', 'סריקות'], ['assets', 'נכסים'], ['sessions', 'סשנים'], ['tools', 'כלים ומפתחות'], ['costs', 'עלויות'], ['agents', 'סוכנים'], ['security', 'סקרי אבטחה']]
+const sevTone: Record<string, string> = { high: 'bg-rose-100 text-rose-800', medium: 'bg-amber-100 text-amber-800', low: 'bg-sky-100 text-sky-800', info: 'bg-slate-100 text-slate-600' }
+const sevLabel: Record<string, string> = { high: 'גבוה', medium: 'בינוני', low: 'נמוך', info: 'מידע' }
+const gradeTone: Record<string, string> = { A: 'bg-emerald-100 text-emerald-800', B: 'bg-amber-100 text-amber-800', C: 'bg-rose-100 text-rose-800' }
 
 export default function CcProject() {
   const { id } = useParams()
@@ -16,6 +19,8 @@ export default function CcProject() {
   const [edit, setEdit] = useState(false)
   const [allAssets, setAllAssets] = useState<Asset[]>([])
   const [clients, setClients] = useState<CcClient[]>([])
+  const [busy, setBusy] = useState<'profile' | 'scan' | null>(null)
+  const [scan, setScan] = useState<ProjectScan | null>(null)
 
   const load = useCallback(() => api.get<CcProjectDetail>(`/cc/projects/${id}`).then(setD).catch(setError), [id])
   useEffect(() => { load() }, [load])
@@ -46,6 +51,17 @@ export default function CcProject() {
   async function runAgent(agentId: string) {
     try { const r = await api.post<{ id: string }>(`/cc/agents/${agentId}/runs`, { project_id: id, idempotency_key: `${agentId}:${Date.now()}` }); window.location.hash = ''; load(); window.location.assign(`/agents/runs/${r.id}`) } catch (err) { setError(err) }
   }
+  async function refreshProfile() {
+    setBusy('profile'); setError(null)
+    try { await api.post(`/cc/projects/${id}/profile`); await load() } catch (err) { setError(err) } finally { setBusy(null) }
+  }
+  async function runScan() {
+    setBusy('scan'); setError(null)
+    try { const s = await api.post<ProjectScan>(`/cc/projects/${id}/scan`); setScan(s); await load() } catch (err) { setError(err) } finally { setBusy(null) }
+  }
+  async function openScan(scanId: string) {
+    try { setScan(await api.get<ProjectScan>(`/cc/scans/${scanId}`)) } catch (err) { setError(err) }
+  }
   async function linkPt(e: FormEvent) {
     e.preventDefault(); const fd = new FormData(e.target as HTMLFormElement)
     try {
@@ -61,7 +77,7 @@ export default function CcProject() {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <Link to="/projects" className="text-xs text-indigo-600">← לכל הפרויקטים</Link>
-          <h1 className="flex items-center gap-3 text-xl font-bold">{p.name} <TonePill tone={prodFail ? 'bad' : 'ok'}>{prodFail ? 'כשל בייצור' : 'ייצור תקין'}</TonePill>{p.status === 'archived' && <span className="badge bg-slate-200 text-slate-600">בארכיון</span>}</h1>
+          <h1 className="flex items-center gap-3 text-xl font-bold">{p.name} <TonePill tone={prodFail ? 'bad' : 'ok'}>{prodFail ? 'כשל בייצור' : 'ייצור תקין'}</TonePill>{d.project.last_scan_grade && <button className={`badge ${gradeTone[d.project.last_scan_grade] ?? 'bg-slate-100'}`} onClick={() => setTab('scans')}>סריקה {d.project.last_scan_grade}</button>}{p.status === 'archived' && <span className="badge bg-slate-200 text-slate-600">בארכיון</span>}</h1>
           <p className="text-sm text-slate-500">{p.description || <Mono>{p.id}</Mono>}</p>
         </div>
         <button className="btn-secondary" onClick={() => setEdit(v => !v)}>עריכה</button>
@@ -105,6 +121,79 @@ export default function CcProject() {
           <Card title="פעילות הפרויקט">
             {d.events.length === 0 ? <Empty>אין פעילות. שייך נכסים לפרויקט כדי לראות פריסות וריצות.</Empty> : <ul className="divide-y divide-slate-100">{d.events.slice(0, 20).map(e => <EventRow key={e.id} e={e} />)}</ul>}
           </Card>
+        </div>
+      )}
+
+      {tab === 'build' && (
+        <div className="space-y-4">
+          <Card title="איך הפרויקט בנוי" actions={<button className="btn-secondary" disabled={busy !== null} onClick={refreshProfile}>{busy === 'profile' ? 'אוסף…' : (d.profile?.at ? 'רענן פרופיל' : 'בנה פרופיל')}</button>}>
+            {!d.profile?.summary ? <Empty>עדיין לא נבנה פרופיל. "בנה פרופיל" קורא מהספקים (קריאה בלבד) את המבנה של כל נכס: שפות, מסגרת, תלויות, CI, בדיקות, הגדרות Vercel, סכימת Supabase.</Empty> : (
+              <>
+                <pre className="whitespace-pre-wrap text-sm">{d.profile.summary.text}</pre>
+                <div className="mt-3 flex flex-wrap gap-2">{d.profile.summary.integrations.map(i => <span key={i} className="badge bg-indigo-50 text-indigo-800">{i}</span>)}</div>
+                <div className="mt-2 text-xs text-slate-400">עודכן {fmtDate(d.profile.at ?? undefined)}</div>
+              </>
+            )}
+          </Card>
+          {d.profile?.assets.filter(a => a.profile).map(a => {
+            const p = a.profile!
+            return (
+              <Card key={a.id} title={`${t(provider, a.provider)} · ${a.name}`} actions={<Link to={`/assets/${a.id}`} className="text-xs text-indigo-600">עמוד הנכס</Link>}>
+                {p.error ? <div className="text-sm text-rose-700">{p.error}</div> : a.provider === 'github' ? (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Facts items={[['מסגרת', p.framework || '—'], ['ריצה', p.runtime || '—'], ['ענף', p.default_branch || '—'], ['קבצים', String(p.files ?? '—')], ['CI', p.workflows?.length ? p.workflows.join(', ') : 'אין'], ['בדיקות', p.has_tests ? 'יש' : 'אין'], ['מיגרציות SQL', String(p.migrations ?? 0)], ['דחיפה אחרונה', fmtDate(p.pushed_at)]]} />
+                    <div className="space-y-2 text-sm">
+                      <div><span className="text-xs text-slate-500">שפות:</span> {Object.entries(p.languages ?? {}).map(([k, v]) => `${k} ${Math.round(100 * v / Math.max(1, Object.values(p.languages ?? {}).reduce((s, x) => s + x, 0)))}%`).join(' · ') || '—'}</div>
+                      <div><span className="text-xs text-slate-500">מבנה:</span> <span className="mono text-xs">{Object.entries(p.top_level ?? {}).slice(0, 14).map(([k, v]) => `${k} (${v})`).join(' · ')}</span></div>
+                      <div><span className="text-xs text-slate-500">אינטגרציות:</span> {(p.integrations ?? []).join(', ') || '—'}</div>
+                      <div><span className="text-xs text-slate-500">תלויות ({Object.keys(p.dependencies ?? {}).length}):</span> <span className="mono text-xs">{Object.keys(p.dependencies ?? {}).slice(0, 25).join(', ')}</span></div>
+                      {p.env_files_committed?.length ? <div className="text-rose-700">קובץ env בריפו: {p.env_files_committed.join(', ')}</div> : null}
+                      {p.readme_excerpt && <details className="text-xs text-slate-600"><summary className="cursor-pointer">README</summary><pre className="mt-1 whitespace-pre-wrap">{p.readme_excerpt}</pre></details>}
+                    </div>
+                  </div>
+                ) : a.provider === 'vercel' ? (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Facts items={[['מסגרת', p.framework || '—'], ['Node', p.node_version || '—'], ['תיקיית שורש', p.root_directory || '/'], ['ריפו מקושר', p.linked_repo || '—'], ['ענף ייצור', p.production_branch || '—'], ['הגנה', p.protection || '—'], ['פריסת ייצור אחרונה', p.last_production ? `${p.last_production.state} · ${fmtDate(p.last_production.at)}` : 'אין']]} />
+                    <div className="space-y-2 text-sm">
+                      <div><span className="text-xs text-slate-500">כתובות:</span> {(p.domains ?? []).map(dm => <ExtLink key={dm} href={`https://${dm}`}>{dm}</ExtLink>)}</div>
+                      <div><span className="text-xs text-slate-500">משתני סביבה ({p.env_names?.length ?? 0}, שמות בלבד):</span> <span className="mono text-xs">{(p.env_names ?? []).join(', ')}</span></div>
+                      {p.crons?.length ? <div><span className="text-xs text-slate-500">Cron:</span> <span className="mono text-xs">{p.crons.join(', ')}</span></div> : null}
+                    </div>
+                  </div>
+                ) : a.provider === 'supabase' ? (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Facts items={[['אזור', p.region || '—'], ['מצב', p.status || '—'], ['Postgres', p.postgres_version || '—'], ['טבלאות', String(p.tables?.length ?? 0)], ['Policies', String(p.policies ?? '—')]]} />
+                    <div className="text-sm"><span className="text-xs text-slate-500">סכימה (public):</span>
+                      <ul className="mt-1 max-h-64 overflow-auto text-xs">{(p.tables ?? []).map(tb => <li key={tb.name} className="flex justify-between border-b border-slate-100 py-0.5"><span className="mono">{tb.name}</span><span>{qty(tb.rows)} שורות · {tb.rls ? 'RLS' : <span className="text-rose-700">ללא RLS</span>}</span></li>)}</ul>
+                    </div>
+                  </div>
+                ) : <Empty>אין פרופיל לסוג נכס זה.</Empty>}
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
+      {tab === 'scans' && (
+        <div className="space-y-4">
+          <Card title="סריקת תקינות" actions={<button className="btn-primary" disabled={busy !== null} onClick={runScan}>{busy === 'scan' ? 'סורק…' : 'הרץ סריקה'}</button>}>
+            <p className="text-sm text-slate-600">הסריקה בודקת כל נכס של הפרויקט דרך החיבורים (קריאה בלבד): הגנת ענף, התראות Dependabot / סודות / קוד, קובצי env בריפו, בדיקות ו-CI, lockfile, פריסת ייצור אחרונה, סודות שמורים כ-plain ב-Vercel, טבלאות ללא RLS. כל סריקה נשמרת כדי להשוות לאורך זמן.</p>
+            {d.project.last_scan_grade && <div className="mt-3 text-sm">ציון אחרון: <span className={`badge ${gradeTone[d.project.last_scan_grade] ?? 'bg-slate-100'}`}>{d.project.last_scan_grade}</span> <span className="text-xs text-slate-400">{fmtDate(d.project.last_scan_at)}</span></div>}
+            <p className="mt-3 text-xs text-slate-500">סריקת אבטחה של האתר החי (כותרות, cookies, היקף מאושר) נעשית במודול <button className="text-indigo-700 underline" onClick={() => setTab('security')}>סקרי אבטחה</button>.</p>
+          </Card>
+          {(scan ?? d.last_scan) && (() => { const s = scan ?? d.last_scan!; return (
+            <Card title={`ממצאים · ${fmtDate(s.created_at)}`} actions={<span className={`badge ${gradeTone[s.grade] ?? 'bg-slate-100'}`}>ציון {s.grade}</span>}>
+              <div className="mb-3 flex flex-wrap gap-2 text-xs">{Object.entries(s.counts ?? {}).map(([k, v]) => <span key={k} className={`badge ${sevTone[k]}`}>{sevLabel[k]} {v}</span>)}<span className="badge bg-slate-100">{s.assets ?? 0} נכסים</span></div>
+              {!s.findings?.length ? <Empty>אין ממצאים.</Empty> : (
+                <ul className="divide-y divide-slate-100">{s.findings.map((f, i) => <li key={i} className="py-2 text-sm"><div className="flex flex-wrap items-center gap-2"><span className={`badge ${sevTone[f.severity]}`}>{sevLabel[f.severity]}</span><span className="font-medium">{f.title}</span><span className="text-xs text-slate-400">{f.asset_name} · {t(provider, f.source)}</span></div>{f.detail && <div className="text-xs text-slate-600">{f.detail}</div>}{f.fix && <div className="text-xs text-emerald-800">תיקון: {f.fix}</div>}</li>)}</ul>
+              )}
+            </Card>
+          ) })()}
+          {d.scans && d.scans.length > 1 && (
+            <Card title="היסטוריית סריקות">
+              <ul className="divide-y divide-slate-100 text-sm">{d.scans.map(s => <li key={s.id} className="flex items-center justify-between py-1.5"><button className="text-indigo-700" onClick={() => openScan(s.id)}>{fmtDate(s.created_at)}</button><span className="flex gap-2 text-xs"><span className={`badge ${gradeTone[s.grade] ?? 'bg-slate-100'}`}>{s.grade}</span>{Object.entries(s.counts ?? {}).filter(([, v]) => v).map(([k, v]) => <span key={k} className={`badge ${sevTone[k]}`}>{sevLabel[k]} {v}</span>)}</span></li>)}</ul>
+            </Card>
+          )}
         </div>
       )}
 

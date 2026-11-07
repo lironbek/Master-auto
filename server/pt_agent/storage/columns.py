@@ -75,6 +75,8 @@ TYPED: dict[str, set[str]] = {
     "clients": {"id", "organization_id", "workspace_id", "name", "external_ref", "created_at"},
     "usage_entries": {"id", "organization_id", "workspace_id", "project_id", "client_id", "provider", "metric", "quantity", "unit",
                       "interface", "model", "external_id", "occurred_at", "period_start", "created_at"},
+    # --- Project profile & health scans (migration 0007) ---
+    "project_scans": {"id", "organization_id", "workspace_id", "project_id", "kind", "status", "grade", "created_at", "finished_at"},
 }
 
 # Tables that have no `data` column.

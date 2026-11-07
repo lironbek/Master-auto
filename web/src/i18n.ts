@@ -41,6 +41,7 @@ export const auditAction: Record<string, string> = {
   'cc.agent.create': 'סוכן נוצר', 'cc.agent.update': 'סוכן עודכן', 'cc.agent.run': 'ריצת סוכן החלה', 'cc.agent.run.finish': 'ריצת סוכן הסתיימה', 'cc.agent.run.cancel': 'ריצת סוכן בוטלה',
   'cc.seed.inventory': 'מלאי התחלתי נזרע', 'cc.client.create': 'לקוח נוצר', 'cc.client.update': 'לקוח עודכן',
   'cc.asset.source_delete': 'ריפוזיטורי נמחק במקור', 'cc.asset.source_archive': 'ריפוזיטורי אורכב במקור',
+  'cc.project.profile': 'פרופיל פרויקט נבנה', 'cc.project.scan': 'סריקת תקינות',
 }
 export const evidenceKind: Record<string, string> = {
   password_exposure: 'חשיפת סיסמה', secret_exposure: 'חשיפת סוד', info_disclosure: 'חשיפת מידע', record_access: 'גישה לרשומה', screenshot: 'צילום מסך',

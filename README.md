@@ -31,7 +31,7 @@
 cd server && python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
 export CC_SECRET_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
 uvicorn app:app --port 8000 --reload
-python -m pytest -q            # 109 בדיקות; PT_TEST_DATABASE_URL מפעיל בדיקות Postgres
+python -m pytest -q            # 112 בדיקות; PT_TEST_DATABASE_URL מפעיל בדיקות Postgres
 
 # web
 cd web && npm install && npm run dev     # מפנה /api ל-localhost:8000
