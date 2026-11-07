@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Activity, Bell, Bot, Boxes, ClipboardList, Coins, FolderKanban, Inbox, LayoutDashboard, Link2, LogOut, Shield, ShieldCheck, Users, Vault } from 'lucide-react'
+import { Activity, BarChart3, Bell, Bot, Boxes, ClipboardList, Coins, FolderKanban, Inbox, LayoutDashboard, Link2, LogOut, Shield, ShieldCheck, Users, Vault } from 'lucide-react'
 import { useAuth } from '../auth'
 import { role, t } from '../i18n'
 import { useWorkspace } from '../workspace'
@@ -13,6 +13,7 @@ const main: Item[] = [
   { to: '/connections', label: 'חיבורים', icon: Link2 },
   { to: '/inbox', label: 'תיבת מיון', icon: Inbox },
   { to: '/costs', label: 'עלויות', icon: Coins },
+  { to: '/usage', label: 'שימוש לפי לקוח', icon: BarChart3 },
   { to: '/agents', label: 'סוכנים', icon: Bot },
   { to: '/alerts', label: 'התראות', icon: Bell },
 ]

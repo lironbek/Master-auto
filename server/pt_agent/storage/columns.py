@@ -71,6 +71,10 @@ TYPED: dict[str, set[str]] = {
     "cc_agents": {"id", "organization_id", "workspace_id", "project_id", "name", "owner", "provider", "model", "key_id", "enabled", "version", "created_at"},
     "agent_runs": {"id", "organization_id", "workspace_id", "agent_id", "project_id", "session_id", "status", "started_at", "finished_at", "created_at"},
     "alerts": {"id", "organization_id", "workspace_id", "kind", "target_kind", "target_id", "status", "message", "created_at"},
+    # --- Usage metering (migration 0006) ---
+    "clients": {"id", "organization_id", "workspace_id", "name", "external_ref", "created_at"},
+    "usage_entries": {"id", "organization_id", "workspace_id", "project_id", "client_id", "provider", "metric", "quantity", "unit",
+                      "interface", "model", "external_id", "occurred_at", "period_start", "created_at"},
 }
 
 # Tables that have no `data` column.
@@ -81,7 +85,7 @@ NO_DATA_COLUMN = {"audit_events", "evidence_access_log"}
 GLOBAL_LOOKUP_TABLES = {"users", "sessions", "organizations"}
 
 # Timestamp column used for ordering.
-ORDER_COLUMN = {"audit_events": "at", "evidence_access_log": "at", "activity_events": "occurred_at"}
+ORDER_COLUMN = {"audit_events": "at", "evidence_access_log": "at", "activity_events": "occurred_at", "usage_entries": "occurred_at"}
 
 # Only these tables may be addressed by the generic store API.
 ALLOWED_TABLES = set(TYPED)

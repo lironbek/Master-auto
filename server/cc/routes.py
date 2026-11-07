@@ -17,6 +17,7 @@ from pt_agent.storage import get_store
 
 from . import agents as agent_engine
 from . import sync as sync_engine
+from . import usage as usage_engine
 from .connectors import PROVIDERS, ConfigError, ConnectorError, build, validate_config
 from .secrets import SecretsUnavailable, encrypt, mask
 from .service import (
@@ -173,6 +174,7 @@ class ProjectIn(BaseModel):
     importance: str = "normal"
     environment: str = "unclassified"
     budget_usd: float = Field(default=0, ge=0, allow_inf_nan=False)
+    client_id: Optional[str] = None
 
 
 class ProjectPatch(BaseModel):
@@ -184,6 +186,14 @@ class ProjectPatch(BaseModel):
     environment: Optional[str] = None
     budget_usd: Optional[float] = Field(default=None, ge=0, allow_inf_nan=False)
     default_key_id: Optional[str] = None     # "" clears the default key
+    client_id: Optional[str] = None          # "" clears the client
+
+
+def _check_client(p: Principal, client_id: Optional[str], workspace_id: str) -> None:
+    if client_id:
+        c = _store().get("clients", client_id, organization_id=p.organization_id)
+        if not c or c["workspace_id"] != workspace_id:
+            raise HTTPException(status_code=422, detail="client must belong to the project's workspace")
 
 
 @router.get("/projects")
@@ -194,6 +204,7 @@ def list_projects(workspace_id: Optional[str] = None, p: Principal = Depends(cur
 @router.post("/projects")
 def create_project(body: ProjectIn, p: Principal = Depends(current_principal)):
     require_workspace(p, body.workspace_id, WS_EDITOR)
+    _check_client(p, body.client_id, body.workspace_id)
     row = {"id": new_id("prj"), "organization_id": p.organization_id, "created_at": iso(), "status": "active", **body.model_dump()}
     _store().insert("cc_projects", row)
     audit(p, "cc.project.create", detail=row["id"])
@@ -217,10 +228,16 @@ def get_project(project_id: str, p: Principal = Depends(current_principal)):
     keys = [public(k_) for k_ in store.list("provider_keys", organization_id=org, workspace_id=pr["workspace_id"])]
     pt_projects = [x for x in store.list("projects", organization_id=org) if x.get("cc_project_id") == project_id]
     month_cost = sum(float(c.get("amount") or 0) for c in costs if _month(c) == now().strftime("%Y-%m"))
+    client = store.get("clients", pr["client_id"], organization_id=org) if pr.get("client_id") else None
+    start, end = usage_engine.window(None, None)
+    usage_rows = usage_engine.filter_entries(store.list("usage_entries", organization_id=org, workspace_id=pr["workspace_id"], project_id=project_id),
+                                             start=start, end=end, client_id=None, project_id=None, provider=None, interface=None)
+    usage = usage_engine.summarize(usage_rows, {client["id"]: client} if client else {}, {pr["id"]: pr})
     return {"project": pr, "assets": assets, "events": events, "sessions": sessions, "costs": costs,
             "cost_month_usd": round(month_cost, 2), "agents": agents, "runs": runs,
             "connections": [conns[a["connection_id"]] for a in assets if a.get("connection_id") in conns and conns] if conns else [],
-            "keys": keys, "pt_projects": pt_projects}
+            "keys": keys, "pt_projects": pt_projects, "client": client,
+            "usage_month": {"totals": usage["totals"], "by_provider": usage["by_provider"], "by_interface": usage["by_interface"]}}
 
 
 @router.patch("/projects/{project_id}")
@@ -229,6 +246,8 @@ def patch_project(project_id: str, body: ProjectPatch, p: Principal = Depends(cu
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
     if "status" in patch and patch["status"] not in ("active", "archived"):
         raise HTTPException(status_code=422, detail="status must be active|archived")
+    if patch.get("client_id"):
+        _check_client(p, patch["client_id"], pr["workspace_id"])
     if "default_key_id" in patch and patch["default_key_id"]:
         k = _store().get("provider_keys", patch["default_key_id"], organization_id=p.organization_id)
         if not k or k["workspace_id"] != pr["workspace_id"]:
@@ -672,6 +691,103 @@ def rotate_report_token(ws_id: str, p: Principal = Depends(current_principal)):
                     patch={"report_token_hash": _token_hash(token), "report_token": None})
     audit(p, "cc.workspace.report_token", detail=ws_id)
     return {"workspace_id": ws_id, "report_token": token}
+
+
+# --- Clients & usage metering (PRD 9.3, extended) -------------------------
+
+class ClientIn(BaseModel):
+    workspace_id: str
+    name: str = Field(min_length=1, max_length=160)
+    external_ref: str = Field(default="", max_length=120)
+    notes: str = Field(default="", max_length=2000)
+
+
+class ClientPatch(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=160)
+    external_ref: Optional[str] = Field(default=None, max_length=120)
+    notes: Optional[str] = Field(default=None, max_length=2000)
+
+
+@router.get("/clients")
+def list_clients(workspace_id: Optional[str] = None, p: Principal = Depends(current_principal)):
+    store, org = _store(), p.organization_id
+    rows = list_in_workspaces(p, "clients", workspace_id)
+    projects = list_in_workspaces(p, "cc_projects", workspace_id)
+    for c in rows:
+        c["projects"] = [{"id": x["id"], "name": x["name"]} for x in projects if x.get("client_id") == c["id"]]
+    return sorted(rows, key=lambda c: c["name"])
+
+
+@router.post("/clients")
+def create_client(body: ClientIn, p: Principal = Depends(current_principal)):
+    require_workspace(p, body.workspace_id, WS_EDITOR)
+    store, org = _store(), p.organization_id
+    if any(c["name"].lower() == body.name.strip().lower() for c in store.list("clients", organization_id=org, workspace_id=body.workspace_id)):
+        raise HTTPException(status_code=409, detail="client name already exists in this workspace")
+    row = {"id": new_id("cli"), "organization_id": org, "workspace_id": body.workspace_id, "name": body.name.strip(),
+           "external_ref": body.external_ref, "notes": body.notes, "created_at": iso(), "source": "manual"}
+    store.insert("clients", row)
+    audit(p, "cc.client.create", detail=f"{row['id']} {row['name']}")
+    return row
+
+
+@router.patch("/clients/{client_id}")
+def patch_client(client_id: str, body: ClientPatch, p: Principal = Depends(current_principal)):
+    get_in_workspace(p, "clients", client_id, minimum=WS_EDITOR)
+    patch = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "name" in patch:
+        patch["name"] = patch["name"].strip()
+    row = _store().update("clients", client_id, organization_id=p.organization_id, patch=patch)
+    audit(p, "cc.client.update", detail=f"{client_id} {','.join(patch)}")
+    return row
+
+
+@router.post("/usage")
+def report_usage(body: usage_engine.UsageReportIn, x_report_token: Optional[str] = Header(default=None)):
+    """Metered usage reported by the integration that made the calls (n8n
+    workflow, bot, app), signed with the workspace reporter token. Each entry is
+    one metric for one client; `external_id` makes a replay a duplicate."""
+    store = _store()
+    ws = _workspace_by_token(store, body.workspace_id, x_report_token or "")
+    if not ws:
+        raise HTTPException(status_code=401, detail="invalid report token")
+    org = ws["organization_id"]
+    accepted = duplicates = 0
+    created: list[str] = []
+    for e in body.entries:
+        e = usage_engine.normalise(e)
+        if e.project_id:
+            pr = store.get("cc_projects", e.project_id, organization_id=org)
+            if not pr or pr["workspace_id"] != ws["id"]:
+                raise HTTPException(status_code=422, detail=f"project {e.project_id} not in workspace")
+            if not e.client and not e.client_id and pr.get("client_id"):
+                e.client_id = pr["client_id"]      # the project's client by default
+        cid = usage_engine.resolve_client(store, org, ws["id"], client_id=e.client_id, name=e.client, created=created)
+        _, dup = usage_engine.record(store, org, ws["id"], e, client_id=cid, source="reporter")
+        duplicates += dup
+        accepted += not dup
+    return {"ok": True, "accepted": accepted, "duplicates": duplicates, "clients_created": created}
+
+
+@router.get("/usage")
+def usage_report(workspace_id: Optional[str] = None, client_id: Optional[str] = None, project_id: Optional[str] = None,
+                 provider: Optional[str] = None, interface: Optional[str] = None,
+                 from_: Optional[str] = Query(default=None, alias="from"), to: Optional[str] = None,
+                 limit: int = Query(default=200, le=1000), p: Principal = Depends(current_principal)):
+    """Usage for a period (default: the current month) with totals by client,
+    provider, interface and project, plus the latest entries."""
+    store, org = _store(), p.organization_id
+    start, end = usage_engine.window(from_, to)
+    rows = usage_engine.filter_entries(list_in_workspaces(p, "usage_entries", workspace_id), start=start, end=end,
+                                       client_id=client_id, project_id=project_id, provider=provider, interface=interface)
+    clients = {c["id"]: c for c in list_in_workspaces(p, "clients", workspace_id)}
+    projects = {x["id"]: x for x in list_in_workspaces(p, "cc_projects", workspace_id)}
+    out = usage_engine.summarize(rows, clients, projects)
+    for r in rows[:limit]:
+        r["client_name"] = clients.get(r.get("client_id") or "", {}).get("name", "")
+        r["project_name"] = projects.get(r.get("project_id") or "", {}).get("name", "")
+    return {**out, "entries": rows[:limit], "period": {"from": iso(start) if start else None, "to": iso(end) if end else None},
+            "providers": list(usage_engine.PROVIDERS), "metrics": list(usage_engine.METRICS)}
 
 
 # --- Alerts -----------------------------------------------------------------

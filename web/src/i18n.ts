@@ -39,7 +39,7 @@ export const auditAction: Record<string, string> = {
   'cc.inbox.dismiss': 'הצעת שיוך נדחתה', 'cc.session.create': 'סשן נפתח', 'cc.session.update': 'סשן עודכן', 'cc.session.link': 'אירוע קושר לסשן',
   'cc.cost.create': 'רשומת עלות נוספה', 'cc.key.create': 'מפתח ספק נוסף', 'cc.key.rotate': 'סבב מפתח ספק',
   'cc.agent.create': 'סוכן נוצר', 'cc.agent.update': 'סוכן עודכן', 'cc.agent.run': 'ריצת סוכן החלה', 'cc.agent.run.finish': 'ריצת סוכן הסתיימה', 'cc.agent.run.cancel': 'ריצת סוכן בוטלה',
-  'cc.seed.inventory': 'מלאי התחלתי נזרע',
+  'cc.seed.inventory': 'מלאי התחלתי נזרע', 'cc.client.create': 'לקוח נוצר', 'cc.client.update': 'לקוח עודכן',
 }
 export const evidenceKind: Record<string, string> = {
   password_exposure: 'חשיפת סיסמה', secret_exposure: 'חשיפת סוד', info_disclosure: 'חשיפת מידע', record_access: 'גישה לרשומה', screenshot: 'צילום מסך',
@@ -76,6 +76,8 @@ export const runStatusCc: Record<string, string> = { queued: 'ממתין', runni
 export const alertKind: Record<string, string> = { failure: 'כשל בייצור', repeated_failure: 'כשלים חוזרים', sync_delay: 'עיכוב בסנכרון', permission: 'בעיית הרשאה', budget: 'תקציב' }
 export const wsRole: Record<string, string> = { admin: 'מנהל', editor: 'עורך', viewer: 'צופה' }
 export const coverage: Record<string, string> = { full: 'מלא', partial: 'חלקי', inventory_only: 'מלאי בלבד', blocked: 'חסום' }
+export const usageProvider: Record<string, string> = { claude: 'Claude', anthropic: 'Claude', gemini: 'Gemini', openai: 'OpenAI', ocr: 'OCR', whatsapp: 'WhatsApp', telegram: 'Telegram', sms: 'SMS', email: 'אימייל', other: 'אחר' }
+export const metricLabel: Record<string, string> = { requests: 'קריאות', tokens_in: 'טוקני קלט', tokens_out: 'טוקני פלט', tokens_cached: 'טוקנים מהמטמון', messages: 'הודעות', recipients: 'נמענים', pages: 'עמודים', characters: 'תווים', minutes: 'דקות', units: 'יחידות' }
 export function usd(n: number | string | undefined | null): string {
   const v = Number(n ?? 0)
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(isNaN(v) ? 0 : v)

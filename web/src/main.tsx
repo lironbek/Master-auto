@@ -18,6 +18,7 @@ import AssetPage from './pages/cc/Asset'
 import Connections from './pages/cc/Connections'
 import InboxPage from './pages/cc/Inbox'
 import Costs from './pages/cc/Costs'
+import Usage from './pages/cc/Usage'
 import Agents from './pages/cc/Agents'
 import AgentRunPage from './pages/cc/AgentRun'
 import Alerts from './pages/cc/Alerts'
@@ -56,6 +57,7 @@ function App() {
         <Route path="connections" element={<Connections />} />
         <Route path="inbox" element={<InboxPage />} />
         <Route path="costs" element={<Costs />} />
+        <Route path="usage" element={<Usage />} />
         <Route path="agents" element={<Agents />} />
         <Route path="agents/runs/:id" element={<AgentRunPage />} />
         <Route path="alerts" element={<Alerts />} />

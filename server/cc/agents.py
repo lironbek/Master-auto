@@ -138,6 +138,15 @@ def execute_run(store, org_id: str, run: Row, agent: Row, project: Row, *, actor
             text = deterministic_summary(ctx)
 
         cost = estimate_cost(model, usage) if usage["input"] or usage["output"] else 0.0
+        if usage["input"] or usage["output"]:
+            # Metered usage per client (PRD 9.3): one entry per metric, de-duplicated by run.
+            from .usage import UsageEntryIn, record
+            for metric, qty in (("requests", 1), ("tokens_in", usage["input"]), ("tokens_out", usage["output"])):
+                record(store, org_id, project["workspace_id"],
+                       UsageEntryIn(provider=agent.get("provider", "anthropic").replace("anthropic", "claude"), metric=metric, quantity=qty,
+                                    interface=f"agent:{agent['name']}", project_id=project["id"], model=model,
+                                    external_id=f"run:{run['id']}:{metric}", meta={"run_id": run["id"], "key_id": key_id}),
+                       client_id=project.get("client_id"), source="agent")
         if cost:
             store.insert("cost_entries", {
                 "id": new_id("cost"), "organization_id": org_id, "workspace_id": project["workspace_id"],

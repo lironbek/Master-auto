@@ -7,7 +7,7 @@
 |---|---|---|
 | `server/` | FastAPI אחד. `pt_agent/` הליבה המשותפת (אימות, תפקידים, אחסון, מיגרציות) ומודול הסקרים; `cc/` מרכז הבקרה | Python 3.12 |
 | `web/` | React + Vite + Tailwind, RTL. מסכי מרכז הבקרה ומסכי הסקרים תחת "סקרי אבטחה" | TypeScript |
-| `docs/` | האפיונים (מרכז הבקרה v2, PT v1.1), המוקאפ, ארכיטקטורה, קריטריוני קבלה, [סקירת האבטחה והנכונות](docs/REVIEW-2026-11-07.md) ו[מצב הפריסה](docs/DEPLOYMENT.md) | |
+| `docs/` | האפיונים (מרכז הבקרה v2, PT v1.1), המוקאפ, ארכיטקטורה, קריטריוני קבלה, [סקירת האבטחה והנכונות](docs/REVIEW-2026-11-07.md) ו[מצב הפריסה](docs/DEPLOYMENT.md) ו[שימוש לפי לקוח](docs/USAGE.md) | |
 
 ## מה יש בפנים
 
@@ -31,7 +31,7 @@
 cd server && python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
 export CC_SECRET_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
 uvicorn app:app --port 8000 --reload
-python -m pytest -q            # 104 בדיקות; PT_TEST_DATABASE_URL מפעיל בדיקות Postgres
+python -m pytest -q            # 109 בדיקות; PT_TEST_DATABASE_URL מפעיל בדיקות Postgres
 
 # web
 cd web && npm install && npm run dev     # מפנה /api ל-localhost:8000

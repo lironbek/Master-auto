@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, type Asset, type CcProjectDetail } from '../../api'
+import { api, type Asset, type CcClient, type CcProjectDetail } from '../../api'
 import { Card, Empty, ErrorBox, Field, Mono, Spinner, Stat, Table } from '../../components/ui'
 import { EnvPill, EventRow, ExtLink, Facts, ResultPill, TonePill } from '../../components/cc'
-import { assetKind, costKind, environment, fmtDate, importance, provider, qty, runStatusCc, sessionStatus, sessionTool, t, usd } from '../../i18n'
+import { assetKind, costKind, environment, fmtDate, importance, metricLabel, provider, qty, runStatusCc, sessionStatus, sessionTool, t, usageProvider, usd } from '../../i18n'
 
 type Tab = 'summary' | 'assets' | 'sessions' | 'tools' | 'costs' | 'agents' | 'security'
 const tabs: [Tab, string][] = [['summary', 'סקירה'], ['assets', 'נכסים'], ['sessions', 'סשנים'], ['tools', 'כלים ומפתחות'], ['costs', 'עלויות'], ['agents', 'סוכנים'], ['security', 'סקרי אבטחה']]
@@ -15,10 +15,12 @@ export default function CcProject() {
   const [error, setError] = useState<unknown>(null)
   const [edit, setEdit] = useState(false)
   const [allAssets, setAllAssets] = useState<Asset[]>([])
+  const [clients, setClients] = useState<CcClient[]>([])
 
   const load = useCallback(() => api.get<CcProjectDetail>(`/cc/projects/${id}`).then(setD).catch(setError), [id])
   useEffect(() => { load() }, [load])
   useEffect(() => { if (d && tab === 'assets') api.get<Asset[]>(`/cc/assets?workspace_id=${d.project.workspace_id}`).then(setAllAssets).catch(setError) }, [d, tab])
+  useEffect(() => { if (d && edit) api.get<CcClient[]>(`/cc/clients?workspace_id=${d.project.workspace_id}`).then(setClients).catch(setError) }, [d, edit])
 
   if (error && !d) return <ErrorBox error={error} />
   if (!d) return <Spinner />
@@ -33,7 +35,7 @@ export default function CcProject() {
     e.preventDefault()
     const fd = new FormData(e.target as HTMLFormElement)
     // default_key_id: "" clears the key (null would mean "no change" to the server)
-    try { await api.patch(`/cc/projects/${id}`, { name: fd.get('name'), description: fd.get('description'), owner: fd.get('owner'), importance: fd.get('importance'), environment: fd.get('environment'), status: fd.get('status'), budget_usd: Number(fd.get('budget_usd')), default_key_id: String(fd.get('default_key_id') ?? '') }); setEdit(false); load() } catch (err) { setError(err) }
+    try { await api.patch(`/cc/projects/${id}`, { name: fd.get('name'), description: fd.get('description'), owner: fd.get('owner'), importance: fd.get('importance'), environment: fd.get('environment'), status: fd.get('status'), budget_usd: Number(fd.get('budget_usd')), default_key_id: String(fd.get('default_key_id') ?? ''), client_id: String(fd.get('client_id') ?? '') }); setEdit(false); load() } catch (err) { setError(err) }
   }
   async function assign(assetId: string) { try { await api.post(`/cc/projects/${id}/assets`, { asset_id: assetId }); load() } catch (err) { setError(err) } }
   async function unassign(assetId: string) { try { await api.del(`/cc/projects/${id}/assets/${assetId}`); load() } catch (err) { setError(err) } }
@@ -75,6 +77,7 @@ export default function CcProject() {
             <Field label="סביבה"><select className="input" name="environment" defaultValue={p.environment}>{Object.entries(environment).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             <Field label="תקציב חודשי ($)"><input className="input ltr" type="number" min={0} step="0.01" name="budget_usd" defaultValue={p.budget_usd ?? 0} /></Field>
             <Field label="סטטוס"><select className="input" name="status" defaultValue={p.status}><option value="active">פעיל</option><option value="archived">ארכיון</option></select></Field>
+            <Field label="לקוח" hint="שימוש ב-API שמדווח לפרויקט נזקף ללקוח הזה"><select className="input" name="client_id" defaultValue={p.client_id ?? ''}><option value="">ללא לקוח</option>{clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
             <Field label="מפתח AI ברירת מחדל"><select className="input" name="default_key_id" defaultValue={p.default_key_id ?? ''}><option value="">ללא</option>{d.keys.map(k => <option key={k.id} value={k.id}>{k.name} · {k.masked}</option>)}</select></Field>
             <div className="md:col-span-3 text-xs text-slate-500">שינוי מרחב מתבצע דרך אשף העברה נפרד. סודות והרשאות לא עוברים עם השיוך.</div>
             <div className="md:col-span-3"><button className="btn-primary">שמירה</button></div>
@@ -92,7 +95,13 @@ export default function CcProject() {
             <Stat label="סשנים פתוחים" value={d.sessions.filter(s => s.status === 'open').length} />
             <Stat label="ריצות סוכן" value={d.runs.length} />
           </div>
-          <Facts items={[['בעלים', p.owner || '—'], ['חשיבות', t(importance, p.importance)], ['סביבה', t(environment, p.environment)], ['פריסת ייצור אחרונה', lastProd ? <span>{fmtDate(lastProd.occurred_at)} <ResultPill value={lastProd.result} /></span> : 'אין דיווח']]} />
+          <Facts items={[['בעלים', p.owner || '—'], ['לקוח', d.client ? <Link to="/usage" className="text-indigo-700">{d.client.name}</Link> : 'ללא לקוח'], ['חשיבות', t(importance, p.importance)], ['סביבה', t(environment, p.environment)], ['פריסת ייצור אחרונה', lastProd ? <span>{fmtDate(lastProd.occurred_at)} <ResultPill value={lastProd.result} /></span> : 'אין דיווח']]} />
+          {d.usage_month && Object.keys(d.usage_month.totals).length > 0 && (
+            <Card title="שימוש החודש (API, הודעות, OCR)" actions={<Link to="/usage" className="text-xs text-indigo-600">שימוש לפי לקוח</Link>}>
+              <div className="flex flex-wrap gap-2">{Object.entries(d.usage_month.totals).map(([m, v]) => <span key={m} className="badge bg-slate-100 text-slate-700"><bdi>{qty(v)}</bdi> {t(metricLabel, m)}</span>)}</div>
+              <ul className="mt-3 divide-y divide-slate-100 text-sm">{d.usage_month.by_interface.map(i => <li key={`${i.interface}|${i.provider}`} className="flex flex-wrap items-center justify-between gap-2 py-1.5"><span><span className="mono text-xs">{i.interface || '—'}</span> · {t(usageProvider, i.provider)}</span><span className="flex flex-wrap gap-1">{Object.entries(i.metrics).map(([m, v]) => <span key={m} className="badge bg-slate-50 text-slate-600"><bdi>{qty(v)}</bdi> {t(metricLabel, m)}</span>)}</span></li>)}</ul>
+            </Card>
+          )}
           <Card title="פעילות הפרויקט">
             {d.events.length === 0 ? <Empty>אין פעילות. שייך נכסים לפרויקט כדי לראות פריסות וריצות.</Empty> : <ul className="divide-y divide-slate-100">{d.events.slice(0, 20).map(e => <EventRow key={e.id} e={e} />)}</ul>}
           </Card>
