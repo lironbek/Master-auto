@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "control-center-server"
+version = "0.3.0"
+description = "Governance core for an authorized, contract-bound penetration-testing / security-survey agent platform"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+dependencies = [
+    "fastapi>=0.110",
+    "pydantic>=2.6",
+    "uvicorn>=0.29",
+    "httpx>=0.27",
+    "psycopg[binary]>=3.1",
+    "cryptography>=42",
+    "anthropic>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["pt_agent*", "cc*"]
+
+[tool.setuptools.package-data]
+"pt_agent.db" = ["migrations/*.sql"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

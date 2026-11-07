@@ -1,0 +1,5 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "fastapi",
+  "crons": [{ "path": "/cc/sync/all", "schedule": "*/15 * * * *" }]
+}

@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>מרכז הבקרה של לירון</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f6fa;color:#172941;font:15px system-ui,Arial,sans-serif}button,select{font:inherit}button{cursor:pointer}button:focus-visible,select:focus-visible{outline:3px solid #1e7eea;outline-offset:3px}.shell{display:grid;grid-template-columns:225px minmax(0,1fr);min-height:100vh}.sidebar{background:#10223a;color:#b8c9df;padding:28px 17px;display:flex;flex-direction:column;gap:6px}.brand{color:white;font-size:20px;font-weight:800;display:flex;gap:10px;align-items:center;margin:0 4px 30px}.logo{background:#44dfcb;color:#10223a;border-radius:11px;padding:7px 10px}.nav{border:0;background:none;text-align:right;color:inherit;padding:12px;border-radius:9px}.nav:hover,.nav.active{background:#253c58;color:white}.foot{margin-top:auto;padding:18px 10px;color:#aec5d9;font-size:13px}.main{min-width:0}.bar{height:68px;background:white;border-bottom:1px solid #e4ebf3;display:flex;align-items:center;justify-content:space-between;padding:0 28px;gap:10px}.label,.pill{display:inline-block;font-size:12px;border-radius:20px;padding:4px 9px;background:#e5f7f4;color:#126457;font-weight:700}.warn{background:#fff1da;color:#8a5308}.bad{background:#fce9ee;color:#a22c4a}.neutral{background:#eaf0ff;color:#405bb1}.wrap{max-width:1350px;margin:auto;padding:24px 28px}.hero{background:linear-gradient(115deg,#102542,#184b63);color:white;padding:27px 30px;border-radius:17px;position:relative;overflow:hidden;margin-bottom:19px}.hero:after{content:'';position:absolute;inset:0 57% 0 0;background:radial-gradient(circle at 32% 65%,#37dfca66,transparent 60%);pointer-events:none}.hero .eyebrow{color:#80e4d8}.hero p{color:#d1e3ee}.eyebrow{font-size:12px;font-weight:800;color:#277c83}.hero h1,h1{margin:5px 0;font-size:clamp(24px,4vw,36px)}p{margin:7px 0;line-height:1.55}.muted,small{color:#52657b}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card,.panel{background:white;border:1px solid #dee7f1;border-radius:14px;padding:16px;min-width:0}.card{text-align:right;color:inherit}.card:hover,.action:hover{border-color:#2e83aa;background:#f5fbff}.num{display:block;font-size:29px;font-weight:850;margin:2px 0}.split{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;margin-top:15px}.panel h2{margin:0 0 12px;font-size:19px}.row{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid #e8eef5;padding:12px 0}.row:first-of-type{border-top:0}.row strong{display:block;margin-bottom:3px}.action,select{border:1px solid #d4e1ef;border-radius:8px;background:white;color:#18486c;padding:7px 10px}.tabs,.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.action.selected{background:#173b59;color:white}.notice{background:#e8f6f9;border-radius:9px;padding:10px;margin:8px 0}.empty{padding:14px 0}.timeline{border-right:2px solid #b5e8e2;padding-right:14px}.timeline .row{position:relative}.timeline .row:before{content:'';position:absolute;right:-20px;background:#23a998;width:9px;height:9px;border-radius:50%}bdi{overflow-wrap:anywhere}.bar select{max-width:45vw}@media(max-width:950px){.shell{grid-template-columns:170px 1fr}.grid{grid-template-columns:repeat(2,1fr)}.split{grid-template-columns:1fr}}@media(max-width:650px){.shell{display:block}.sidebar{padding:10px;display:flex;flex-direction:row;overflow:auto;gap:3px}.brand{margin:0;font-size:0}.brand .logo{font-size:14px}.nav{white-space:nowrap;padding:8px}.foot{display:none}.bar{padding:0 12px;height:52px}.wrap{padding:14px 12px}.hero{padding:18px}.card,.panel{padding:11px}.row{align-items:flex-start}.pill{white-space:nowrap}}
+
+.crumbs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;color:#52657b;font-size:13px}.guide{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.guide .action{border-style:dashed}.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:15px 0}.detail-grid div{background:white;border:1px solid #dee7f1;border-radius:10px;padding:12px}.detail-grid dt{font-size:12px;color:#52657b;margin-bottom:6px}.detail-grid dd{margin:0;font-weight:750;overflow-wrap:anywhere}.details-panel{margin-top:14px}.action{margin:2px 0}.trace{direction:ltr;text-align:left;background:#112842;color:#e0edf7;border-radius:9px;padding:13px;white-space:pre-wrap;overflow-wrap:anywhere;font:13px ui-monospace,monospace}.evidence{display:flex;gap:8px;flex-wrap:wrap}.panel h3{margin:12px 0 4px;font-size:15px}.row>div:last-child{text-align:end}.guide-label{align-self:center;font-weight:750;color:#284862}
+.edit{display:grid;gap:10px;max-width:620px}.edit label{display:grid;gap:5px}.edit input,.edit textarea,.edit select{width:100%;padding:8px;border:1px solid #cbd9e8;border-radius:8px;font:inherit}.edit textarea{min-height:70px}.quick{margin-bottom:14px}.action[disabled]{opacity:.5;cursor:default}</style></head><body>
+<div class="shell"><aside class="sidebar" aria-label="ניווט"><div class="brand"><span class="logo">◈</span> מרכז הבקרה</div><button class="nav" data-page="overview">▦ סקירה</button><button class="nav" data-page="projects">▣ פרויקטים</button><button class="nav" data-page="sessions">◷ סשנים</button><button class="nav" data-page="assets">◇ קטלוג נכסים</button><button class="nav" data-page="connections">⎋ חיבורים</button><button class="nav" data-page="inbox">◎ תיבת מיון</button><button class="nav" data-page="costs">₪ עלויות</button><button class="nav" data-page="agents">✧ סוכנים</button><div class="foot">מרכז הבקרה של לירון<br>מוקאפ אינטראקטיבי</div></aside>
+<div class="main"><header class="bar"><span class="label">מצב דמו · נתונים להמחשה</span><select id="space" aria-label="מרחב"><option value="all">כל המרחבים</option><option value="comax">קומקס</option><option value="personal">פרויקטים פרטיים</option></select></header><main id="view" class="wrap"></main></div></div>
+<script>
+const projects=[
+{id:'sign',name:'שילוט COMAX',space:'comax',desc:'תבניות שילוט עם משתני מחיר ומבצע',state:'Preview דורש בדיקה',tone:'warn'},
+{id:'build',name:'BuildFlow',space:'personal',desc:'ניהול פרויקטי בנייה',state:'ייצור תקין',tone:''},
+{id:'clinic',name:'קליניקת אפרת',space:'personal',desc:'ניהול פגישות ותזכורות',state:'כיסוי חלקי',tone:'warn'}];
+const assets=[
+{p:'sign',n:'comax-design',s:'GitHub',e:'פיתוח',d:'קוד מערכת השילוט',status:'בדיקות עברו'},
+{p:'sign',n:'comax-design-preview',s:'Vercel',e:'Preview',d:'תצוגה לבדיקת תבניות',status:'פריסה נכשלה',tone:'bad'},
+{p:'sign',n:'comax-design-production',s:'Vercel',e:'Production',d:'מערכת השילוט הפעילה',status:'נפרס בהצלחה'},
+{p:'build',n:'buildflow-web',s:'Vercel',e:'Production',d:'ממשק מערכת הבנייה',status:'נפרס בהצלחה'},
+{p:'build',n:'buildflow-db',s:'Supabase',e:'Production',d:'מסד הנתונים של המערכת',status:'פרויקט פעיל'},
+{p:'clinic',n:'appointment-reminders',s:'n8n',e:'Production',d:'שליחת תזכורות לפגישות',status:'מלאי בלבד',tone:'warn'},
+{p:null,n:'catalog-digest',s:'GitHub',e:'לא מסווג',d:'תהליך יצירת סיכום קטלוג',status:'ממתין לשיוך',space:'comax',tone:'neutral'}];
+const sessions=[
+{id:'s1',p:'sign',n:'ארגון משתני מחיר ומבצע',d:'בדיקת מבנה משתנים בתבנית השילוט',tool:'Claude Code',status:'פתוח',events:[['11:42','Vercel','פריסת Preview נכשלה','bad'],['11:39','GitHub Actions','בדיקות עברו',''],['11:30','GitHub','PR #42 נפתח','neutral'],['10:55','Claude Code','סשן עבודה התחיל','']]},
+{id:'s2',p:'build',n:'דוח חריגות תקציב',d:'הכנת דוח ראשון להשוואת תכנון מול ביצוע',tool:'Codex',status:'ממתין',events:[['09:10','Codex','סשן עבודה התחיל','']]},
+{id:'s3',p:'clinic',n:'תזכורות לפגישות',d:'מיפוי תהליך שליחת תזכורות',tool:'ידני',status:'הושלם',events:[['08:40','n8n','Workflow זוהה בקטלוג','neutral']]}];
+const connections=[
+{n:'GitHub',space:'comax',scope:'ארגון קומקס',cap:'קטלוג · PR · ריצות Actions',status:'תקין',time:'11:45'},
+{n:'Vercel',space:'comax',scope:'צוות קומקס',cap:'פרויקטים · פריסות · סביבות',status:'תקין',time:'11:44'},
+{n:'Vercel',space:'personal',scope:'חשבון פרטי',cap:'פרויקטים · פריסות · סביבות',status:'תקין',time:'11:44'},
+{n:'Supabase',space:'personal',scope:'פרויקטים פרטיים',cap:'פרויקטים · מצב תשתית',status:'תקין',time:'11:41'},
+{n:'n8n',space:'personal',scope:'מופע קליניקה',cap:'Workflows · הרשאת ריצות חסרה',status:'מלאי בלבד',tone:'warn',time:'11:38'}];
+const runDetails={
+ 's1:0':{id:'dpl_demo_842',at:'7.11.2026 · 11:42',duration:'1 דקה ו־12 שניות',env:'Preview',asset:1,connection:1,cause:'בשלב Build לא נמצא השדה promotionLabel בקובץ מיפוי התבנית. הפריסה נעצרה לפני הפרסום.',trace:'Build started → Template validation → Missing field: promotionLabel → Deployment failed',next:'פתח את ה־PR המקושר ובדוק שהמיפוי מכיל את השדה לפני ניסיון הפריסה הבא.',related:'s1:2'},
+ 's1:1':{id:'run_demo_314',at:'7.11.2026 · 11:39',duration:'48 שניות',env:'פיתוח',asset:0,connection:0,cause:'בדיקות היחידה עברו עבור המיפוי והפורמט. בדיקות אלה אינן כוללות אימות תבנית בשלב הפריסה.',trace:'Unit tests: 24 passed · Lint: passed · Exit code: 0',next:'בדוק גם את תוצאת פריסת ה־Preview עבור אותו שינוי.',related:'s1:0'},
+ 's1:2':{id:'PR #42',at:'7.11.2026 · 11:30',env:'פיתוח',asset:0,connection:0,cause:'נפתח PR להוספת משתנה תצוגה למבצע. ענף: feature/promo-variables. סטטוס סקירה: ממתין.',trace:'feature/promo-variables → main · Commit a1b2c3d',next:'סקור את השינוי מול הבדיקות והפריסה המקושרות.',related:'s1:0'},
+ 's1:3':{id:'cc_demo_037',at:'7.11.2026 · 10:55',env:'פיתוח',asset:0,cause:'התקבל דיווח פתיחת סשן מהכלי המקומי ושויך לפרויקט לפי מזהה הריפוזיטורי.',trace:'Session started · Workspace: comax-design · Metadata only',next:'עקוב אחרי התוצרים שנוספו לציר הסשן.'},
+ 's2:0':{id:'codex_demo_021',at:'7.11.2026 · 09:10',env:'פיתוח',asset:3,cause:'נפתח סשן להכנת דוח תקציב ראשון. העבודה ממתינה לאימות פורמט הנתונים.',trace:'Session opened · Task: Budget variance report',next:'הוסף קישור לתוצר כשמסתיים האימות.'},
+ 's3:0':{id:'wf_demo_018',at:'7.11.2026 · 08:40',env:'Production',asset:5,connection:4,cause:'נמצא Workflow פעיל ברשימת המלאי. לחשבון החיבור חסרה גישה להיסטוריית ריצות.',trace:'Inventory: imported · Execution history: unavailable',next:'פתח את פרטי החיבור כדי לראות איזה מידע זמין.'},
+ 'prod:0':{id:'dpl_demo_801',at:'7.11.2026 · 10:21',duration:'55 שניות',env:'Production',asset:2,connection:1,cause:'פריסת הייצור הקודמת הסתיימה בהצלחה. היא מתייחסת ל־commit אחר מפריסת ה־Preview שנכשלה.',trace:'Commit 8e41c20 · Build passed · Deployment ready',next:'אפשר לעבור לחיבור ולבדוק מתי התקבל סטטוס הפריסה.'},
+ 'build:0':{id:'dpl_demo_512',at:'7.11.2026 · 09:32',duration:'43 שניות',env:'Production',asset:3,connection:2,cause:'גרסת הייצור של BuildFlow נפרסה בהצלחה.',trace:'Commit 14d9a51 · Build passed · Deployment ready',next:'בדוק בנפרד את נכס מסד הנתונים תחת BuildFlow.'}
+};
+const assetExtra=[
+ ['GitHub · ארגון קומקס','11:45','ריפוזיטורי פרטי','0',['s1:1','s1:2','s1:3']],
+ ['Vercel · צוות קומקס','11:44','פרויקט Preview','1',['s1:0']],
+ ['Vercel · צוות קומקס','11:44','פרויקט ייצור','1',['prod:0']],
+ ['Vercel · חשבון פרטי','11:44','פרויקט ייצור','2',['build:0','s2:0']],
+ ['Supabase · פרויקטים פרטיים','11:41','פרויקט מסד נתונים','3',[]],
+ ['n8n · מופע קליניקה','11:38','Workflow','4',['s3:0']],
+ ['GitHub · ארגון קומקס','11:45','תהליך אוטומציה','0',[]]
+];
+const connectorExtra=[
+ ['מטא־דאטה, PR ו־Actions לקריאה','ריפוזיטוריז שאושרו במרחב קומקס','סנכרון מוצלח. התקבלו עדכוני PR ותוצאות בדיקות.'],
+ ['מטא־דאטה של פרויקטים ופריסות','Preview ו־Production של שילוט COMAX','סנכרון מוצלח. תוצאות הפריסות מתקבלות בנפרד לכל סביבה.'],
+ ['מטא־דאטה של פרויקטים ופריסות','פרויקט BuildFlow','סנכרון מוצלח. התקבל מצב פריסת הייצור.'],
+ ['קריאת מלאי פרויקטים וסטטוס תשתית','מסד BuildFlow','סנכרון מוצלח. נראות תשתיתית ברמת הפרויקט.'],
+ ['קריאת Workflows בלבד','מופע תזכורות לקליניקה','המלאי עודכן. אין נתוני הצלחה או כשל של ריצות עד לאישור גישה.']
+];
+const state={page:'overview',space:'all',project:null,session:null,tab:'summary',note:'',detail:null,filter:null};
+const trail=[];
+const names={overview:'סקירה',projects:'פרויקטים',sessions:'סשנים',assets:'קטלוג נכסים',connections:'חיבורים',inbox:'תיבת מיון',costs:'עלויות',agents:'סוכנים'};
+const el=document.querySelector('#view');
+const pill=(t,c='')=>'<span class="pill '+c+'">'+t+'</span>';
+const button=(t,attrs='',selected=false)=>'<button class="action '+(selected?'selected':'')+'" '+attrs+'>'+t+'</button>';
+const active=(space)=>state.space==='all'||state.space===space;
+const projectOf=id=>projects.find(p=>p.id===id);
+const visibleProjects=()=>projects.filter(p=>active(p.space));
+const visibleAssets=()=>assets.filter(a=>active(projectOf(a.p)?.space??a.space));
+const visibleSessions=()=>sessions.filter(s=>active(projectOf(s.p).space));
+const empty='<p class="muted empty">אין פריטים בתצוגה הזו.</p>';
+const row=(title,sub,extra)=>'<div class="row"><div><strong>'+title+'</strong><small>'+sub+'</small></div><div>'+extra+'</div></div>';
+const panel=(title,body)=>'<section class="panel"><h2>'+title+'</h2>'+(body||empty)+'</section>';
+const head=(title,desc)=>'<div class="eyebrow">מרכז הבקרה</div><h1>'+title+'</h1><p class="muted">'+desc+'</p>';
+const projectRows=items=>items.map(p=>row(p.name,p.desc,pill(p.state,p.tone)+' '+button('פתח פרויקט','data-project="'+p.id+'"'))).join('');
+const sessionRows=items=>items.map(s=>row(s.n,projectOf(s.p).name+' · '+s.tool,pill(s.status,s.status==='ממתין'?'warn':'')+' '+button('פתח סשן','data-session="'+s.id+'"'))).join('');
+const assetRows=items=>items.map(a=>row('<bdi>'+a.n+'</bdi>',a.d+' · <bdi>'+a.s+' / '+a.e+'</bdi> · '+(projectOf(a.p)?.name??'טרם שויך'),pill(a.status,a.tone)+' '+button('פרטי נכס','data-detail="asset:'+assets.indexOf(a)+'"'))).join('');
+const facts=items=>'<dl class="detail-grid">'+items.map(([k,v])=>'<div><dt>'+k+'</dt><dd><bdi>'+v+'</bdi></dd></div>').join('')+'</dl>';
+function eventInfo(key){
+ const [id,i]=key.split(':');
+ const session=sessions.find(s=>s.id===id);
+ const event=session?.events[Number(i)]??(id==='prod'?['10:21','Vercel','פריסת ייצור הצליחה','']:['09:32','Vercel','פריסת BuildFlow הצליחה','']);
+ return {session,event,info:runDetails[key]};
+}
+function eventRow(key){
+ const {event,info}=eventInfo(key);
+ return row(event[2],event[1]+' · '+event[0]+' · '+info.env,pill(event[3]==='bad'?'נכשל':event[3]==='neutral'?'מידע':'התקבל',event[3])+' '+button('פרטי אירוע','data-detail="event:'+key+'"'));
+}
+const keys=[
+ {name:'OpenAI · שילוט',account:'ארגון קומקס / AI Signage',ref:'key_demo_cx',mask:'••••7C2A',scope:'קריאות מודל',space:'comax'},
+ {name:'Anthropic · BuildFlow',account:'מרחב BuildFlow',ref:'key_demo_bf',mask:'••••4D18',scope:'קריאות מודל',space:'personal'},
+ {name:'OpenAI · משרד פרטי',account:'פרויקטים פרטיים / Office',ref:'key_demo_of',mask:'••••9A03',scope:'קריאות מודל',space:'personal'}
+];
+const offices={
+ sign:{links:[0,1],key:0,budget:40},
+ build:{links:[2,3],key:1,budget:80},
+ clinic:{links:[4],key:2,budget:30}
+};
+const charges=[
+ {p:'sign',n:'OpenAI',type:'ספק · חיוב מדווח',cost:12.48,input:820000,output:110000,key:0},
+ {p:'sign',n:'Vercel',type:'הקצאה יחסית מחשבון משותף',cost:8,input:null},
+ {p:'build',n:'Anthropic',type:'ספק · חיוב מדווח',cost:17.62,input:960000,output:140000,key:1},
+ {p:'build',n:'Supabase',type:'חיוב מדווח לפרויקט',cost:25,input:null},
+ {p:'clinic',n:'n8n',type:'הקצאה יחסית מחשבון משותף',cost:6,input:null},
+ {p:'clinic',n:'OpenAI',type:'אומדן לפי שימוש',cost:3.10,input:160000,output:24000,key:2}
+];
+const agents=[
+ {name:'סקירת מצב משרד',p:'',space:'personal',task:'סכם חריגות ועלויות מהפרויקטים שנבחרו לריצה.',key:2,enabled:true},
+ {name:'בדיקת פריסות שילוט',p:'sign',space:'comax',task:'סכם את תוצאות הפריסות והבדיקות האחרונות.',key:0,enabled:true},
+ {name:'מעקב BuildFlow',p:'build',space:'personal',task:'סכם מצב פריסה ותשתית בפרויקט.',key:1,enabled:true}
+];
+const runs=[];
+const safe=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const usd=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n);
+const sourceUrls={GitHub:'https://github.com/AnibTech/comax-design',Vercel:'https://vercel.com/dashboard',Supabase:'https://supabase.com/dashboard'};
+const sourceLink=(provider,label='פתח כלי מקור')=>sourceUrls[provider]?'<a class="action" href="'+sourceUrls[provider]+'" target="_blank" rel="noopener noreferrer">'+label+' ↗</a>':'';
+const qty=n=>new Intl.NumberFormat('he-IL').format(n);
+const option=(v,n,selected)=>'<option value="'+v+'" '+(String(v)===String(selected)?'selected':'')+'>'+safe(n)+'</option>';
+const projectsFor=space=>projects.filter(p=>p.space===space);
+const keyOptions=(space,selected)=>keys.map((k,i)=>k.space===space?option(i,k.name,selected):'').join('');
+function officeConnections(p){
+ const o=offices[p.id],k=keys[o.key];
+ return panel('כלים מחוברים לפרויקט',o.links.map(i=>row(connections[i].n,connections[i].scope+' · '+connections[i].cap,button('פרטי חיבור','data-detail="connection:'+i+'"')+' '+sourceLink(connections[i].n))).join('')+row(k.name,k.account+' · '+k.mask,button('פרטי מפתח','data-detail="key:'+o.key+'"'))+button('ערוך חיבורים ומפתח','data-detail="projectEdit:'+p.id+'"'));
+}
+function costsPage(pid){
+ const list=charges.map((c,i)=>({...c,i})).filter(c=>pid?c.p===pid:active(projectOf(c.p).space));
+ const summary=list.reduce((acc,c)=>{acc.total+=c.cost;acc.tokens+=(c.input??0)+(c.output??0);return acc},{total:0,tokens:0});
+ return facts([['תקופה','נובמבר 2026 · דמו'],['סך משויך (כולל אומדן)',usd(summary.total)],['טוקני AI מדווחים',qty(summary.tokens)],...(pid?[['תקציב חודשי',usd(offices[pid].budget)]]:[])])+
+ panel('פירוט לפי שירות',list.map(c=>row(c.n,projectOf(c.p).name+' · '+c.type+' · '+(c.input===null?'תשתית':qty(c.input+c.output)+' טוקנים'),'<bdi>'+usd(c.cost)+'</bdi> '+button('פירוט חיוב','data-detail="cost:'+c.i+'"'))).join(''));
+}
+function agentList(pid){
+ return panel('סוכנים',button('הגדר סוכן חדש','data-detail="agentNew:'+(pid||'general')+'"')+agents.map((a,i)=>({a,i})).filter(({a})=>pid?a.p===pid||(!a.p&&a.space===projectOf(pid).space):active(a.space)).map(({a,i})=>row(safe(a.name),(a.p?projectOf(a.p).name:'כללי במרחב')+' · '+(a.enabled?'פעיל':'מושהה'),button('הגדרה והפעלה','data-detail="agent:'+i+'"'))).join(''))+
+ '<div class="details-panel">'+panel('היסטוריית ריצות',runs.map((r,i)=>({r,i})).filter(({r})=>pid?r.p===pid:active(projectOf(r.p).space)).reverse().map(({r,i})=>row(safe(r.name),projectOf(r.p).name+' · '+r.status,button('לתוצאה','data-detail="run:'+i+'"'))).join(''))+'</div>';
+}
+function officeDetail(kind,id){
+ if(kind==='key'){
+  const k=keys[id];
+  return head(k.name,'זהות החיבור לספק AI')+facts([['חשבון ספק',k.account],['מזהה פנימי',k.ref],['תצוגה ממוסכת',k.mask],['גישה',k.scope]])+
+   panel('משויך כעת',projects.filter(p=>offices[p.id].key===Number(id)).map(p=>row(p.name,'מפתח ברירת מחדל לפרויקט',button('לשינוי שיוך','data-detail="projectEdit:'+p.id+'"'))).join('')+agents.filter(a=>a.key===Number(id)).map(a=>row(safe(a.name),'מפתח סוכן','')).join(''));
+ }
+ if(kind==='cost'){
+  const c=charges[id];
+  return head(c.n,projectOf(c.p).name+' · פירוט עלות')+facts([['עלות',usd(c.cost)],['שיטת שיוך',c.type],['טוקני קלט',c.input===null?'לא רלוונטי':qty(c.input)],['טוקני פלט',c.output===null?'לא רלוונטי':qty(c.output)]])+
+   panel('מקור החיוב','<p>נתוני דוגמה לחודש נובמבר. '+(c.key===undefined?'השיוך מתבסס על פרויקט ספק או על הקצאה מחשבון משותף.':'המפתח הבא מקושר לרשומת השימוש ההיסטורית.')+'</p>'+button('לפרויקט','data-project="'+c.p+'"')+(c.key===undefined?'':button('למפתח ששימש בחיוב','data-detail="key:'+c.key+'"')));
+ }
+ if(kind==='projectEdit'){
+  const p=projectOf(id),o=offices[id];
+  return head('עריכת '+p.name,'בחר כלי מקור, מפתח AI ותקציב חודשי')+panel('הגדרות פרויקט','<form class="edit" data-form="project" data-id="'+id+'"><label>מפתח ברירת מחדל<select name="key">'+keyOptions(p.space,o.key)+'</select></label><label>תקציב חודשי בדולר<input type="number" name="budget" min="0" step="0.01" required value="'+o.budget+'"></label><fieldset><legend>כלים המשויכים לפרויקט</legend>'+connections.map((c,i)=>c.space===p.space?'<div><label style="display:inline"><input style="width:auto" type="checkbox" name="links" value="'+i+'" '+(o.links.includes(i)?'checked':'')+'> '+c.n+' · '+c.scope+'</label></div>':'').join('')+'</fieldset><button class="action">שמור הגדרות</button></form>');
+ }
+ if(kind==='assetEdit'){
+  const a=assets[id],space=projectOf(a.p)?.space??a.space;
+  return head('שיוך נכס',a.n)+panel('פרויקט יעד','<form class="edit" data-form="asset" data-id="'+id+'"><label>שיוך לפרויקט<select name="project">'+option('','ממתין לשיוך',a.p??'')+projectsFor(space).map(p=>option(p.id,p.name,a.p)).join('')+'</select></label><button class="action">שמור שיוך</button></form>');
+ }
+ if(kind==='run'){
+  const r=runs[id];
+  return head('ריצת '+safe(r.name),projectOf(r.p).name+' · '+r.status)+facts([['מזהה ריצה',r.id],['טוקני קלט',r.input],['טוקני פלט',r.output],['עלות משוערת',usd(r.cost)]])+panel('תוצר הריצה','<p>'+safe(r.result)+'</p>'+button('למפתח ששימש בריצה','data-detail="key:'+r.key+'"')+' '+button('לפרויקט','data-project="'+r.p+'"'));
+ }
+ const isNew=kind==='agentNew',existing=agents[Number(id)];
+ const initial=projectOf(id);
+ const space=existing?.space??initial?.space??(state.space==='all'?'personal':state.space);
+ const a=existing??{name:'',p:initial?.id??'',task:'',key:keys.findIndex(k=>k.space===space),enabled:true};
+ const targetProjects=projectsFor(space).filter(p=>!a.p||p.id===a.p);
+ return head(isNew?'סוכן חדש':safe(a.name),'הגדרה, שיוך והפעלה · '+(space==='comax'?'קומקס':'מרחב פרטי'))+
+ panel('הגדרת סוכן','<form class="edit" data-form="agent" data-id="'+(isNew?'new':id)+'" data-space="'+space+'"><label>שם<input name="name" required maxlength="70" value="'+safe(a.name)+'"></label><label>שיוך<select name="project">'+option('','סוכן כללי במרחב',a.p)+projectsFor(space).map(p=>option(p.id,p.name,a.p)).join('')+'</select></label><label>הוראות משימה<textarea name="task" required maxlength="500">'+safe(a.task)+'</textarea></label><label>מפתח ספק<select name="key">'+keyOptions(space,a.key)+'</select></label><label style="display:block"><input style="width:auto" type="checkbox" name="enabled" '+(a.enabled?'checked':'')+'> פעיל</label><button class="action">שמור הגדרה</button></form>')+
+ (isNew?'':'<div class="details-panel">'+panel('הפעלת דמו','<form class="edit" data-form="run" data-id="'+id+'"><label>פרויקט להרצה<select name="project">'+targetProjects.map(p=>option(p.id,p.name,a.p)).join('')+'</select></label><p>הפעלת הדמו תיצור תוצאה ורשומת שימוש. הפעולות מול הכלים הן לקריאה בדוגמה הזו.</p><button class="action" '+(a.enabled?'':'disabled')+'>הפעל סוכן</button></form>')+'</div>');
+}
+function detailPage(){
+ const [kind,...parts]=state.detail.split(':');
+ const id=parts.join(':');
+ if(!['asset','event','connection'].includes(kind))return officeDetail(kind,id);
+ if(kind==='asset'){
+  const a=assets[Number(id)], [account,last,type,connection,events]=assetExtra[Number(id)];
+  return head(a.n,a.d)+facts([['סוג',type],['חשבון מקור',account],['סביבה',a.e],['עדכון אחרון',last],['מצב',a.status]])+
+   '<div class="evidence">'+(a.p?button('לפרויקט '+projectOf(a.p).name,'data-project="'+a.p+'"'):button('לתיבת המיון','data-page="inbox"'))+button('לפרטי החיבור','data-detail="connection:'+connection+'"')+' '+button('ערוך שיוך','data-detail="assetEdit:'+id+'"')+'</div>'+
+   '<div class="details-panel">'+panel('פעילות שנקלטה',events.length?events.map(eventRow).join(''):'<p class="muted">הנכס מופיע במלאי. אין אירועי פעילות זמינים עבורו בדוגמה הזו.</p>')+'</div>';
+ }
+ if(kind==='event'){
+  const {session,event,info}=eventInfo(id);
+  return head(event[2],event[1]+' · '+assets[info.asset].n)+facts([['מזהה במקור',info.id],['זמן אירוע',info.at],['סביבה',info.env],['משך',info.duration??'לא דווח']])+
+   panel('מה קרה ומה בודקים', '<p>'+info.cause+'</p><div class="trace">'+info.trace+'</div><h3>המשך בדוגמה</h3><p>'+info.next+'</p><div class="evidence">'+
+   button('לנכס המדווח','data-detail="asset:'+info.asset+'"')+(info.connection===undefined?'':button('לחיבור המקור','data-detail="connection:'+info.connection+'"'))+
+   (session?button('לסשן העבודה','data-session="'+session.id+'"'):'')+(info.related?button('לאירוע המקושר','data-detail="event:'+info.related+'"'):'')+'</div>');
+ }
+ const c=connections[Number(id)], [permission,scope,result]=connectorExtra[Number(id)];
+ return head(c.n+' · '+c.scope,'פרטי חיבור וכיסוי הנתונים')+sourceLink(c.n,c.n==='GitHub'?'פתח ריפוזיטורי':'פתח לוח ספק')+facts([['מצב',c.status],['סנכרון אחרון',c.time],['הרשאות בדוגמה',permission],['כיסוי',scope]])+
+ panel('סנכרון אחרון','<p>'+result+'</p>'+(state.note?'<div class="notice" role="status">'+state.note+'</div>':'')+button('הדגם סנכרון','data-sync="'+id+'"'))+
+ '<div class="details-panel">'+panel('נכסים שמגיעים מהחיבור',assetRows(visibleAssets().filter(a=>assetExtra[assets.indexOf(a)][3]===id)))+'</div>';
+}
+function render(){
+ const p=projectOf(state.project),s=sessions.find(item=>item.id===state.session);
+ document.querySelectorAll('.nav').forEach(b=>{const selected=b.dataset.page===state.page;b.classList.toggle('active',selected);if(selected)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
+ let html='';
+ if(state.detail)html=detailPage();
+ else if(state.page==='costs')html=head('עלויות ושימוש','חיובים, הקצאות וצריכת טוקנים לפי פרויקט')+costsPage();
+ else if(state.page==='agents')html=head('מרכז הסוכנים','סוכנים כלליים וסוכנים לפרויקט')+agentList();
+ else if(state.page==='overview'){
+  const cards=[['פרויקטים',visibleProjects().length,'projects'],['נכסים בקטלוג',visibleAssets().length,'assets'],['סשנים פתוחים',visibleSessions().filter(s=>s.status==='פתוח').length,'sessions','open'],['ממתינים לשיוך',visibleAssets().filter(a=>!a.p).length,'inbox']];
+  html='<section class="hero"><div class="eyebrow">סביבת העבודה של לירון</div><h1>מרכז הבקרה</h1><p>הפרויקטים, סשני העבודה והאוטומציות שלך במקום אחד.</p></section><div class="guide"><span class="guide-label">בחר תרחיש להדגמה</span>'+ (active('comax')?button('למה פריסת השילוט נכשלה?','data-detail="event:s1:0"'):'')+(active('personal')?button('איך BuildFlow מחובר?','data-project="build"')+button('למה לא רואים ריצות בקליניקה?','data-detail="connection:4"'):'')+'</div><div class="grid">'+cards.map(([n,v,page,filter])=>'<button class="card" data-page="'+page+'" '+(filter?'data-filter="open"':'')+'>'+n+'<span class="num">'+v+'</span><small>פתח תצוגה ←</small></button>').join('')+'</div><div class="split">'+panel('הפרויקטים שלי',projectRows(visibleProjects()))+panel('דורש תשומת לב',visibleAssets().filter(a=>a.tone==='bad'||a.tone==='warn').map(a=>row(a.status,a.d,button('פתח פרטים','data-detail="'+(a===assets[1]?'event:s1:0':'asset:'+assets.indexOf(a))+'"'))).join(''))+'</div><div class="split">'+panel('סשנים אחרונים',sessionRows(visibleSessions()))+panel('חיבורים',row('עדכון אחרון להמחשה','הנתונים מוצגים לפי המרחב הנבחר',button('פתח חיבורים','data-page="connections"')))+'</div>';
+ } else if(state.page==='projects'&&p){
+  html=button('← לכל הפרויקטים','data-page="projects"')+head(p.name,p.desc)+'<div class="tabs">'+[['summary','סקירה'],['assets','נכסים'],['sessions','סשנים'],['tools','כלים ומפתחות'],['costs','עלויות'],['agents','סוכנים']].map(([id,n])=>button(n,'data-tab="'+id+'"',state.tab===id)).join('')+'</div>';
+  if(state.tab==='summary')html+='<div class="guide">'+button('כלים ומפתחות','data-tab="tools"')+button('פירוט עלויות','data-tab="costs"')+button('סוכני הפרויקט','data-tab="agents"')+'</div>'+panel('מצב הפרויקט',row('סטטוס נוכחי',p.id==='sign'?'פריסת Preview נכשלה ב־11:42. גרסת הייצור נפרסה בהצלחה ב־10:21.':p.id==='build'?'גרסת הייצור נפרסה ב־09:32. נתוני מסד מופיעים תחת נכסים.':'ה־Workflow זוהה. נתוני ריצות ממתינים להרשאה.',pill(p.state,p.tone))+(p.id==='sign'?eventRow('s1:0')+eventRow('prod:0'):p.id==='build'?eventRow('build:0'):eventRow('s3:0')))+'<div class="split">'+panel('נכסים',assetRows(visibleAssets().filter(a=>a.p===p.id)))+panel('סשנים אחרונים',sessionRows(visibleSessions().filter(s=>s.p===p.id)))+'</div>';
+  if(state.tab==='tools')html+='<p class="muted">בדמו הקישורים ל־Vercel ול־Supabase פותחים את לוח הספק.</p>'+officeConnections(p);
+  if(state.tab==='costs')html+=costsPage(p.id);
+  if(state.tab==='agents')html+=agentList(p.id);
+  if(state.tab==='assets')html+=panel('נכסים בפרויקט',assetRows(visibleAssets().filter(a=>a.p===p.id)));
+  if(state.tab==='sessions')html+=panel('סשנים בפרויקט',sessionRows(visibleSessions().filter(s=>s.p===p.id)));
+ } else if(state.page==='sessions'&&s){
+  html=button('← לפרויקט','data-project="'+s.p+'"')+' '+button('לכל הסשנים','data-page="sessions"')+head(s.n,projectOf(s.p).name+' · '+s.d)+'<div class="toolbar">'+pill(s.status)+pill(s.tool,'neutral')+button(s.status==='הושלם'?'פתח מחדש':'סמן כהושלם','data-toggle-session="'+s.id+'"')+'</div>'+panel('ציר הפעילות','<div class="timeline">'+s.events.map((_,i)=>eventRow(s.id+':'+i)).join('')+'</div>');
+ } else if(state.page==='projects')html=head('פרויקטים','בחר פרויקט כדי לראות את נכסיו וסשני העבודה שלו.')+panel('כל הפרויקטים',projectRows(visibleProjects()));
+ else if(state.page==='sessions')html=head('סשני עבודה','פרקי עבודה המקבצים פעולות ותוצרים מהכלים השונים.')+(state.filter==='open'?button('הצג את כל הסשנים','data-page="sessions"'):'')+panel(state.filter==='open'?'סשנים פתוחים':'כל הסשנים',sessionRows(visibleSessions().filter(item=>state.filter!=='open'||item.status==='פתוח')));
+ else if(state.page==='assets')html=head('קטלוג נכסים','מה קיים, מה הוא עושה ואיפה הוא רץ.')+panel('נכסים לפי המרחב הנבחר',assetRows(visibleAssets()));
+ else if(state.page==='connections')html=head('ניהול חיבורים','כיסוי, הרשאות ועדכניות לכל חשבון ומופע.')+(state.note?'<div class="notice" role="status">'+state.note+'</div>':'')+panel('חיבורים מוגדרים',connections.map((c,i)=>active(c.space)?row(c.n+' · '+c.scope,c.cap+' · סנכרון אחרון '+c.time,pill(c.status,c.tone)+' '+button('פרטי חיבור','data-detail="connection:'+i+'"')):'').join(''));
+ else if(state.page==='inbox')html=head('תיבת מיון','כאן משייכים נכסים חדשים לפרויקטים.')+(state.note?'<div class="notice" role="status">'+state.note+'</div>':'')+panel('ממתינים לשיוך',visibleAssets().filter(a=>!a.p).map(a=>row('<bdi>'+a.n+'</bdi>',a.d+' · '+a.s,button('פרטי נכס','data-detail="asset:'+assets.indexOf(a)+'"')+' '+button('שייך לשילוט COMAX','data-assign'))).join(''));
+ const locationLabel=state.detail?(state.detail.startsWith('event:')?'פרטי אירוע':state.detail.startsWith('asset:')?'פרטי נכס':'מסך פרטים'):s?.n??p?.name??names[state.page];
+ el.innerHTML=(state.note&&state.detail&&!state.detail.startsWith('connection:')?'<div class="notice" role="status">'+state.note+'</div>':'')+(trail.length?'<nav class="crumbs" aria-label="מיקום">'+button('חזרה לתצוגה הקודמת','data-back')+' <span>'+names[state.page]+' / '+locationLabel+'</span></nav>':'')+html;
+}
+document.addEventListener('click',event=>{
+ const b=event.target.closest('button');if(!b)return;
+ const d=b.dataset;
+ if('back' in d){const previous=trail.pop();if(previous){Object.assign(state,previous.state);render();window.scrollTo(0,previous.scroll);}return;}
+ if(d.page||d.project||d.session||d.detail){trail.push({state:{...state},scroll:window.scrollY});state.detail=null;state.filter=null;}
+ state.note='';
+ if(d.page){state.page=d.page;state.project=null;state.session=null;state.filter=d.filter??null;}
+ else if(d.detail)state.detail=d.detail;
+ else if(d.project){state.page='projects';state.project=d.project;state.session=null;state.tab='summary';}
+ else if(d.session){state.page='sessions';state.session=d.session;}
+ else if(d.tab){trail.push({state:{...state},scroll:window.scrollY});state.tab=d.tab;}
+ else if(d.toggleSession){const s=sessions.find(s=>s.id===d.toggleSession);s.status=s.status==='הושלם'?'פתוח':'הושלם';}
+ else if(d.sync!==undefined){const c=connections[Number(d.sync)];c.time=new Intl.DateTimeFormat('he-IL',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jerusalem'}).format(new Date());state.note=c.n+' · '+(c.tone?'סנכרון מלאי הודגם. הרשאת ריצות עדיין חסרה.':'הדגמת הסנכרון הסתיימה בהצלחה.');}
+ else if('assign' in d){assets.find(a=>a.n==='catalog-digest').p='sign';state.note='הנכס שויך לשילוט COMAX ומופיע כעת בקטלוג הפרויקט.';}
+ else return;
+ render();if(d.page||d.project||d.session||d.detail)window.scrollTo(0,0);
+});
+el.addEventListener('submit',event=>{
+ event.preventDefault();
+ const form=event.target,{form:kind,id,space}=form.dataset,data=new FormData(form);
+ state.note='';
+ if(kind==='project'){
+  const o=offices[id];o.key=Number(data.get('key'));o.budget=Number(data.get('budget'));o.links=data.getAll('links').map(Number);
+  state.note='הגדרות הפרויקט נשמרו בדמו.';
+ }else if(kind==='asset'){
+  const a=assets[id];a.space=projectOf(a.p)?.space??a.space;a.p=data.get('project')||null;
+  state.note='שיוך הנכס נשמר בדמו.';
+ }else if(kind==='agent'){
+  const agent={name:data.get('name').trim(),task:data.get('task').trim(),p:data.get('project'),key:Number(data.get('key')),space,enabled:data.has('enabled')};
+  if(!agent.name||!agent.task){state.note='יש להזין שם והוראות משימה.';render();return;}
+  if(id==='new'){agents.push(agent);state.detail='agent:'+(agents.length-1);}else agents[id]=agent;
+  state.note='הגדרת הסוכן נשמרה בדמו.';
+ }else if(kind==='run'){
+  const a=agents[id],p=projectOf(data.get('project'));if(!a.enabled||!p||p.space!==a.space||(a.p&&a.p!==p.id))return;
+  const input=1200,output=240,cost=0.02;
+  runs.push({id:'run_office_'+(runs.length+1),name:a.name,p:p.id,key:a.key,status:'הושלם בדמו',input,output,cost,result:p.name+' · '+p.state+'. נאספו '+assets.filter(x=>x.p===p.id).length+' נכסים והופק סיכום מצב לדוגמה.'});
+  charges.push({p:p.id,n:keys[a.key].name,type:'אומדן ריצת דמו',input,output,cost,key:a.key});
+  trail.push({state:{...state},scroll:window.scrollY});state.detail='run:'+(runs.length-1);
+ }
+ render();
+});
+document.querySelector('#space').addEventListener('change',event=>{trail.length=0;state.detail=null;state.filter=null;state.space=event.target.value;state.project=null;state.session=null;state.note='';render();});
+render();
+</script></body></html>
