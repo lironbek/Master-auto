@@ -2,14 +2,14 @@
 
 | רכיב | Vercel project | כתובת | מקור |
 |---|---|---|---|
-| API (FastAPI) | `control-center-api` | https://control-center-api-ten.vercel.app | `control-center/server` |
-| UI (Vite) | `control-center` | https://control-center-nu-pied.vercel.app | `control-center/web` |
+| API (FastAPI) | `master-auto-api` | https://master-auto-api-lirons-projects-afcef793.vercel.app | `server/` ברפו `lironbek/master-auto`, ענף `main` |
+| UI (Vite) | `master-auto` | https://master-auto-lirons-projects-afcef793.vercel.app | `web/` ברפו `lironbek/master-auto`, ענף `main` |
 | מסד נתונים | Supabase project `pt` (eu-central-1) | session pooler `aws-1-eu-central-1.pooler.supabase.com:5432`, role `pt_app` | מיגרציות `server/pt_agent/db/migrations` |
 
 ה-UI מפנה `/api/*` לשרת (rewrite ב-`web/vercel.json`), כך שהדפדפן רואה origin אחד.
 Vercel Authentication כבוי בשני הפרויקטים: האפליקציה אוכפת כניסה בעצמה (bearer sessions).
 
-## משתני סביבה בשרת (`control-center-api`)
+## משתני סביבה בשרת (`master-auto-api`)
 
 | משתנה | סטטוס | הערה |
 |---|---|---|
@@ -29,12 +29,9 @@ Vercel Authentication כבוי בשני הפרויקטים: האפליקציה �
 המלאי נזרע (2 מרחבים, 95 פרויקטים, 178 נכסים, 178 שיוכים, 0 לא משויכים)
 עם מזהים דטרמיניסטיים, כך ש-`python scripts/seed_inventory.py --dsn ...` ניתן להרצה חוזרת.
 
-## מה עוד פתוח
+## היסטוריה
 
-1. רפו GitHub נפרד `lironbek/control-center` — צריך להיווצר ידנית (ריק); אחר כך
-   `git push` מהעותק המקומי ולחבר אליו את שני פרויקטי ה-Vercel (Settings → Git).
-   עד אז הקוד חי ב-`lironbek/cars` תחת `control-center/` על ענף `ccr-10d35ca5-rgi5eg`.
-2. ענף ייצור ב-Vercel הוא `main`; הפריסות נוצרו ידנית מהענף. אחרי מיזוג ל-`main`
-   כל push יפרוס אוטומטית.
-3. הספרייה `pt/` ברפו `cars` היא הגרסה הישנה של המודול; הגרסה החיה היא
-   `control-center/server/pt_agent`.
+הרפו הנפרד `lironbek/master-auto` הוא המקור מ-7.11.2026; כל push ל-`main` פורס
+אוטומטית את שני הפרויקטים. העותק הקודם (`lironbek/cars` תחת `control-center/`, פרויקטי
+Vercel `control-center` / `control-center-api`) נשאר להיסטוריה בלבד ואפשר למחוק אותו.
+הספרייה `pt/` ב-`cars` והפרויקט `pt` ב-Vercel הם הגרסה הישנה של המודול.
