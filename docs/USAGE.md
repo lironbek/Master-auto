@@ -53,8 +53,11 @@ Content-Type: application/json
 `recipients` על רשומת הודעות נשמר כמדד נפרד "נמענים". `external_id` חוזר = כפילות
 (התשובה מחזירה `accepted` / `duplicates`). עד 500 רשומות לבקשה.
 
-ב-n8n: צומת HTTP Request אחרי כל קריאת API, עם הכותרת והגוף למעלה; `external_id`
-= מזהה הריצה של n8n + שם הצעד, כך שריצה חוזרת לא נספרת פעמיים.
+מתוך האפליקציות שלך (Next.js / Vite / Node / Python): העתק את `docs/snippets/report-usage.ts`
+או `docs/snippets/report_usage.py`, הגדר `CC_USAGE_URL`, `CC_REPORT_TOKEN`, `CC_WORKSPACE_ID`,
+וקרא ל-`reportUsage()` מיד אחרי כל קריאה בתשלום (יש עטיפות מוכנות ל-Claude, Gemini,
+WhatsApp ו-OCR). הדיווח אסינכרוני ולעולם לא מפיל את המוצר. `external_id` ייחודי לכל
+קריאה, כך שניסיון חוזר לא נספר פעמיים.
 
 ## תצוגה
 
