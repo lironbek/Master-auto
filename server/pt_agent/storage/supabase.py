@@ -70,6 +70,10 @@ class SupabaseStore:
         )
         return _merge(rows[0]) if rows else current
 
+    def delete(self, table: str, row_id: str, *, organization_id: str) -> bool:
+        rows = self._req("DELETE", table, params={"id": f"eq.{row_id}", "organization_id": f"eq.{organization_id}"}, prefer="return=representation")
+        return bool(rows)
+
     def list(self, table: str, *, organization_id: str, **filters: Any) -> list[Row]:
         params = {"organization_id": f"eq.{organization_id}"}
         for k, v in filters.items():

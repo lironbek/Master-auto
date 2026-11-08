@@ -113,6 +113,11 @@ class PostgresStore:
         got = self._run(q, [cols[n] for n in names] + [row_id, organization_id], fetch="one")
         return merge(_normalize(dict(got))) if got else current
 
+    def delete(self, table: str, row_id: str, *, organization_id: str) -> bool:
+        q = sql.SQL("delete from {t} where id = %s and organization_id = %s returning id").format(t=self._table(table))
+        got = self._run(q, [row_id, organization_id], fetch="one")
+        return bool(got)
+
     def _where(self, table: str, filters: dict[str, Any], conds: list, params: list) -> None:
         typed_cols = split(table, {k: None for k in filters}) if filters else {}
         for k, v in filters.items():

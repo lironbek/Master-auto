@@ -23,6 +23,7 @@ class Store(Protocol):
     def list(self, table: str, *, organization_id: str, **filters: Any) -> list[Row]: ...
     def find_one(self, table: str, **filters: Any) -> Optional[Row]: ...
     def list_organization_ids(self) -> list[str]: ...
+    def delete(self, table: str, row_id: str, *, organization_id: str) -> bool: ...
 
 
 class MemoryStore:
@@ -56,6 +57,13 @@ class MemoryStore:
             return None
         row.update(patch)
         return dict(row)
+
+    def delete(self, table: str, row_id: str, *, organization_id: str) -> bool:
+        row = self._t(table).get(row_id)
+        if row is None or row.get("organization_id") != organization_id:
+            return False
+        del self._t(table)[row_id]
+        return True
 
     def list(self, table: str, *, organization_id: str, **filters: Any) -> list[Row]:
         key = ORDER_COLUMN.get(table, "created_at")

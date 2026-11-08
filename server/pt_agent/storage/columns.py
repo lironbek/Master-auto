@@ -77,6 +77,24 @@ TYPED: dict[str, set[str]] = {
                       "interface", "model", "external_id", "occurred_at", "period_start", "created_at"},
     # --- Project profile & health scans (migration 0007) ---
     "project_scans": {"id", "organization_id", "workspace_id", "project_id", "kind", "status", "grade", "created_at", "finished_at"},
+    # --- Billing & service module (migration 0008) ---
+    "bl_customers": {"id", "organization_id", "workspace_id", "client_id", "name", "email", "phone", "contact_person", "address", "status",
+                     "bill_hours", "hourly_rate", "legacy_id", "created_at"},
+    "bl_products": {"id", "organization_id", "workspace_id", "project_id", "name", "description", "price", "has_light_user", "light_user_price", "legacy_id", "created_at"},
+    "bl_services": {"id", "organization_id", "workspace_id", "description", "price", "recurring", "legacy_id", "created_at"},
+    "bl_subscriptions": {"id", "organization_id", "workspace_id", "customer_id", "kind", "product_id", "service_id", "user_count", "light_user_count",
+                         "quantity", "valid_from", "valid_until", "legacy_id", "created_at"},
+    "bl_employees": {"id", "organization_id", "workspace_id", "user_id", "name", "email", "phone", "position", "role", "hourly_rate", "active", "legacy_id", "created_at"},
+    "bl_tickets": {"id", "organization_id", "workspace_id", "number", "customer_id", "product_id", "employee_id", "title", "description", "status", "priority",
+                   "contact_person", "contact_phone", "group_name", "image_url", "opened_at", "closed_at", "legacy_id", "created_at"},
+    "bl_time_entries": {"id", "organization_id", "workspace_id", "ticket_id", "employee_id", "description", "minutes", "entry_date", "billed_charge_id", "legacy_id", "created_at"},
+    "bl_external_updates": {"id", "organization_id", "workspace_id", "ticket_id", "contact_name", "contact_phone", "content", "minutes", "update_date", "legacy_id", "created_at"},
+    "bl_charges": {"id", "organization_id", "workspace_id", "customer_id", "period", "status", "subtotal", "vat_pct", "vat", "total", "issued_at", "paid_at", "legacy_id", "created_at"},
+    "bl_charge_lines": {"id", "organization_id", "workspace_id", "charge_id", "kind", "ref_id", "description", "quantity", "unit_price", "total", "legacy_id", "created_at"},
+    "bl_expenses": {"id", "organization_id", "workspace_id", "name", "amount", "currency", "rate_used", "amount_ils", "category", "expense_date", "description", "recurring", "legacy_id", "created_at"},
+    "bl_knowledge": {"id", "organization_id", "workspace_id", "product_id", "title", "content", "category", "legacy_id", "created_at"},
+    "bl_fx_rates": {"id", "organization_id", "currency", "rate_date", "rate", "created_at"},
+    "bl_settings": {"id", "organization_id", "workspace_id", "created_at"},
 }
 
 # Tables that have no `data` column.
@@ -87,7 +105,8 @@ NO_DATA_COLUMN = {"audit_events", "evidence_access_log"}
 GLOBAL_LOOKUP_TABLES = {"users", "sessions", "organizations"}
 
 # Timestamp column used for ordering.
-ORDER_COLUMN = {"audit_events": "at", "evidence_access_log": "at", "activity_events": "occurred_at", "usage_entries": "occurred_at"}
+ORDER_COLUMN = {"audit_events": "at", "evidence_access_log": "at", "activity_events": "occurred_at", "usage_entries": "occurred_at",
+                "bl_tickets": "opened_at", "bl_time_entries": "entry_date", "bl_expenses": "expense_date"}
 
 # Only these tables may be addressed by the generic store API.
 ALLOWED_TABLES = set(TYPED)

@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from billing.routes import router as billing_router
 from cc.routes import router as cc_router
 from pt_agent.api.app import _auto_migrate, _migration_state
 from pt_agent.api.app import app as pt_app
@@ -34,13 +35,14 @@ app.add_middleware(
 )
 app.include_router(auth_router)
 app.include_router(cc_router)
+app.include_router(billing_router)
 app.mount("/pt", pt_app)
 
 
 @app.get("/healthz")
 def healthz():
     out = {"status": "ok", "storage": backend_name(), "version": app.version,
-           "modules": ["auth", "cc", "pt"], "secrets": bool(os.environ.get("CC_SECRET_KEY"))}
+           "modules": ["auth", "cc", "billing", "pt"], "secrets": bool(os.environ.get("CC_SECRET_KEY"))}
     if backend_name() == "postgres":
         out["migrations"] = _migration_state
         if _migration_state["error"]:
