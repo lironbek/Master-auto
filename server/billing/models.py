@@ -279,3 +279,13 @@ class ImportIn(BaseModel):
     billing_items: list[dict[str, Any]] = Field(default_factory=list)
     expenses: list[dict[str, Any]] = Field(default_factory=list)
     knowledge_items: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class LegacySupabaseIn(BaseModel):
+    """Pull everything from the old Supabase project and import it (admin only)."""
+    workspace_id: str
+    supabase_url: str = Field(min_length=20, max_length=200)
+    anon_key: str = Field(min_length=20, max_length=600)
+    email: str = Field(min_length=3, max_length=160)
+    password: str = Field(min_length=1, max_length=200)
+    dry_run: bool = False

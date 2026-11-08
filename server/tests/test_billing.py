@@ -199,3 +199,26 @@ def test_viewer_cannot_write(client):
     client.post(f"/cc/workspaces/{ws}/members", json={"user_id": user_id, "role": "viewer"}, headers=h)
     assert client.get(f"/billing/customers?workspace_id={ws}", headers=vh).status_code == 200
     assert client.post("/billing/customers", json={"workspace_id": ws, "name": "x"}, headers=vh).status_code == 403
+
+
+def test_import_from_old_supabase(client, monkeypatch):
+    from billing import legacy, routes
+    calls = {}
+
+    def fake_fetch_all(url, anon, email, password):
+        calls["args"] = (url, anon, email, password)
+        return {t: [] for t in legacy.TABLES} | {"customers": [{"id": "C9", "name": "ישן"}], "products": [{"id": "P9", "name": "מוצר", "price": 5}]}
+
+    monkeypatch.setattr(routes.legacy, "fetch_all", fake_fetch_all)
+    h = _login(client)
+    ws = _ws(client, h)
+    body = {"workspace_id": ws, "supabase_url": "https://abc.supabase.co", "anon_key": "k" * 30, "email": "a@b.c", "password": "pw"}
+    dry = client.post("/billing/import/supabase", json={**body, "dry_run": True}, headers=h).json()
+    assert dry["fetched"]["customers"] == 1 and dry["report"] is None
+    assert client.get(f"/billing/customers?workspace_id={ws}", headers=h).json() == []
+    real = client.post("/billing/import/supabase", json=body, headers=h).json()
+    assert real["report"]["customers"]["inserted"] == 1 and real["report"]["products"]["inserted"] == 1
+    assert client.get(f"/billing/customers?workspace_id={ws}", headers=h).json()[0]["legacy_id"] == "C9"
+    # a failed login surfaces as 422 with the reason
+    monkeypatch.setattr(routes.legacy, "fetch_all", lambda *a: (_ for _ in ()).throw(legacy.LegacyError("bad login")))
+    assert client.post("/billing/import/supabase", json=body, headers=h).status_code == 422

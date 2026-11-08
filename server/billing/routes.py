@@ -30,7 +30,7 @@ from cc.service import (
 from pt_agent.api.auth import Principal, current_principal
 from pt_agent.storage import get_store
 
-from . import engine, exports
+from . import engine, exports, legacy
 from .models import (
     CHARGE_STATUS,
     CURRENCIES,
@@ -55,6 +55,7 @@ from .models import (
     ImportIn,
     KnowledgeIn,
     KnowledgePatch,
+    LegacySupabaseIn,
     ManualChargeIn,
     ProductIn,
     ProductPatch,
@@ -1019,3 +1020,24 @@ def import_legacy(body: ImportIn, p: Principal = Depends(current_principal)):
                                                          "category": r.get("category") or "", "tags": r.get("tags") or []}, "kb")
     audit(p, "billing.import", detail=f"{ws} " + " ".join(f"{k}={v['inserted']}/{v['skipped']}/{v['errors']}" for k, v in report.items()))
     return {"workspace_id": ws, "report": report}
+
+
+@router.post("/import/supabase")
+def import_from_supabase(body: LegacySupabaseIn, p: Principal = Depends(current_principal)):
+    """One-shot migration from the old Lovable/Supabase billing app: log in to
+    the old project as the given user, read all tables, import them. Safe to
+    re-run (rows are keyed by legacy id). Credentials are not stored."""
+    require_workspace(p, body.workspace_id, WS_ADMIN)
+    try:
+        data = legacy.fetch_all(body.supabase_url, body.anon_key, body.email, body.password)
+    except legacy.LegacyError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:   # network / parsing
+        raise HTTPException(status_code=502, detail=f"שגיאה מול Supabase הישן: {type(exc).__name__}")
+    counts = {k: len(v) for k, v in data.items()}
+    if body.dry_run:
+        audit(p, "billing.import.supabase", detail=f"{body.workspace_id} dry-run " + " ".join(f"{k}={v}" for k, v in counts.items()))
+        return {"workspace_id": body.workspace_id, "fetched": counts, "report": None}
+    out = import_legacy(ImportIn(workspace_id=body.workspace_id, **data), p)
+    audit(p, "billing.import.supabase", detail=f"{body.workspace_id} " + " ".join(f"{k}={v}" for k, v in counts.items()))
+    return {**out, "fetched": counts}
