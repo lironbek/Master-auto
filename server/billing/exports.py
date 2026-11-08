@@ -9,15 +9,17 @@ import html
 from io import BytesIO
 from typing import Any, Iterable
 
-from openpyxl import Workbook
-from openpyxl.styles import Alignment, Font, PatternFill
-from openpyxl.utils import get_column_letter
-
 Row = dict[str, Any]
 
 
 def xlsx(sheets: list[tuple[str, list[str], Iterable[list[Any]]]]) -> bytes:
-    """[(sheet title, headers, rows)] -> xlsx bytes, RTL sheets with bold headers."""
+    """[(sheet title, headers, rows)] -> xlsx bytes, RTL sheets with bold headers.
+    openpyxl is imported here so a missing package degrades only the Excel
+    export instead of keeping the whole API from starting."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
     wb = Workbook()
     wb.remove(wb.active)
     for title, headers, rows in sheets:
