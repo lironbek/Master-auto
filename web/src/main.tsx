@@ -23,6 +23,22 @@ import Agents from './pages/cc/Agents'
 import AgentRunPage from './pages/cc/AgentRun'
 import Alerts from './pages/cc/Alerts'
 import Workspaces from './pages/cc/Workspaces'
+// Billing & service module
+import BillingDashboard from './pages/billing/Dashboard'
+import BlCustomers from './pages/billing/Customers'
+import BlCustomer from './pages/billing/Customer'
+import BlCatalog from './pages/billing/Catalog'
+import BlEmployees from './pages/billing/Employees'
+import BlExpenses from './pages/billing/Expenses'
+import BlTickets from './pages/billing/Tickets'
+import BlTicketPage from './pages/billing/Ticket'
+import BlActivities from './pages/billing/Activities'
+import BlCharges from './pages/billing/Charges'
+import BlChargePage from './pages/billing/Charge'
+import BlHoursReport from './pages/billing/HoursReport'
+import BlKnowledgePage from './pages/billing/Knowledge'
+import BlSettingsPage from './pages/billing/Settings'
+import ExternalUpdate from './pages/public/ExternalUpdate'
 // Security surveys (PT module)
 import PtDashboard from './pages/pt/Dashboard'
 import PtProjects from './pages/pt/Projects'
@@ -47,6 +63,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/u/:token" element={<ExternalUpdate />} />
       <Route element={<Protected />}>
         <Route index element={<Overview />} />
         <Route path="projects" element={<CcProjects />} />
@@ -64,6 +81,22 @@ function App() {
         <Route path="alerts" element={<Alerts />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="workspaces" element={<Workspaces />} />
+        <Route path="billing">
+          <Route index element={<BillingDashboard />} />
+          <Route path="customers" element={<BlCustomers />} />
+          <Route path="customers/:id" element={<BlCustomer />} />
+          <Route path="catalog" element={<BlCatalog />} />
+          <Route path="employees" element={<BlEmployees />} />
+          <Route path="expenses" element={<BlExpenses />} />
+          <Route path="tickets" element={<BlTickets />} />
+          <Route path="tickets/:id" element={<BlTicketPage />} />
+          <Route path="activities" element={<BlActivities />} />
+          <Route path="charges" element={<BlCharges />} />
+          <Route path="charges/:id" element={<BlChargePage />} />
+          <Route path="reports/hours" element={<BlHoursReport />} />
+          <Route path="knowledge" element={<BlKnowledgePage />} />
+          <Route path="settings" element={<BlSettingsPage />} />
+        </Route>
         <Route path="security">
           <Route index element={<PtDashboard />} />
           <Route path="projects" element={<PtProjects />} />

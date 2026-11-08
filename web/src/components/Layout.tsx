@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Activity, BarChart3, Bell, Bot, Boxes, ClipboardList, Coins, Eye, FolderKanban, Inbox, LayoutDashboard, Layers, Link2, LogOut, Search, Shield, ShieldCheck, Sparkles, Users, Vault } from 'lucide-react'
+import { Activity, BarChart3, Bell, BookOpen, Bot, Boxes, Clock, ClipboardList, Coins, Eye, FolderKanban, Inbox, LayoutDashboard, Layers, Link2, LogOut, Package, Receipt, Search, Settings, Shield, ShieldCheck, Sparkles, UserCog, Users, Vault, Wallet, Wrench } from 'lucide-react'
 import { api } from '../api'
 import { useAuth } from '../auth'
 import { role, t } from '../i18n'
@@ -27,6 +27,19 @@ const security: Item[] = [
   { to: '/security/evidence', label: 'כספת ראיות', icon: Vault, tint: 'bg-violet-100 text-violet-700' },
   { to: '/security/reports', label: 'דוחות', icon: ClipboardList, tint: 'bg-amber-100 text-amber-700' },
   { to: '/security/audit', label: 'ביקורת', icon: ClipboardList, tint: 'bg-slate-100 text-slate-600' },
+]
+const billing: Item[] = [
+  { to: '/billing', label: 'לוח חיוב', icon: LayoutDashboard, end: true, tint: 'bg-emerald-100 text-emerald-700' },
+  { to: '/billing/customers', label: 'לקוחות', icon: Users, tint: 'bg-teal-100 text-teal-700' },
+  { to: '/billing/catalog', label: 'מוצרים ושירותים', icon: Package, tint: 'bg-violet-100 text-violet-700' },
+  { to: '/billing/tickets', label: 'קריאות שירות', icon: Wrench, tint: 'bg-amber-100 text-amber-700' },
+  { to: '/billing/activities', label: 'פעילויות', icon: Activity, tint: 'bg-sky-100 text-sky-700' },
+  { to: '/billing/charges', label: 'חיובים', icon: Wallet, tint: 'bg-indigo-100 text-indigo-700' },
+  { to: '/billing/reports/hours', label: 'דוח שעות', icon: Clock, tint: 'bg-cyan-100 text-cyan-700' },
+  { to: '/billing/expenses', label: 'הוצאות', icon: Receipt, tint: 'bg-rose-100 text-rose-600' },
+  { to: '/billing/knowledge', label: 'מאגר ידע', icon: BookOpen, tint: 'bg-fuchsia-100 text-fuchsia-700' },
+  { to: '/billing/employees', label: 'עובדים', icon: UserCog, tint: 'bg-orange-100 text-orange-600' },
+  { to: '/billing/settings', label: 'הגדרות חיוב', icon: Settings, tint: 'bg-slate-200 text-slate-700' },
 ]
 const admin: Item[] = [
   { to: '/workspaces', label: 'מרחבים', icon: Layers, tint: 'bg-indigo-100 text-indigo-700' },
@@ -72,6 +85,8 @@ export default function Layout() {
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto px-3">
           <Nav items={main} />
+          <div className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wide text-slate-400">חיוב ושירות</div>
+          <Nav items={billing} />
           <div className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wide text-slate-400">סקרי אבטחה</div>
           <Nav items={security} />
           <div className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wide text-slate-400">ניהול</div>
@@ -107,7 +122,7 @@ export default function Layout() {
           </div>
         </header>
         <nav className="flex gap-1 overflow-x-auto px-2 py-1 md:hidden">
-          {[...main, ...security, ...admin].map(({ to, label, end }) => (
+          {[...main, ...billing, ...security, ...admin].map(({ to, label, end }) => (
             <NavLink key={to} to={to} end={end} className={({ isActive }) => `whitespace-nowrap rounded-lg px-2 py-1 text-xs ${isActive ? 'bg-white font-semibold text-indigo-700 shadow-sm' : 'text-slate-600'}`}>{label}</NavLink>
           ))}
         </nav>

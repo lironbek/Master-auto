@@ -21,6 +21,15 @@
 הקצאה / מנוי) ומפתחות ספק מוצפנים עם סבב, ומרכז סוכנים בקריאה-בלבד עם ריצות,
 תקציב, idempotency ותיעוד עלות.
 
+**חיוב ושירות** (`server/billing`, תפריט "חיוב ושירות"): לקוחות (מקושרים
+ללקוחות מדידת השימוש), מוצרים לפי משתמשים ומשתמשי Light, שירותים חד-פעמיים
+ומתחדשים, מנויים עם תוקף, עובדים עם תעריף שעה, קריאות שירות ממוספרות עם רישומי
+זמן, קישור עדכון חתום ללקוח (`/u/<token>`, גם בוואטסאפ), פיד פעילויות, מנוע
+חיוב חודשי (יחסי לתוקף, שעות אופציונלי, מע"מ, שורות ידניות, טיוטה → הופק →
+שולם), תצוגת הדפסה/PDF ואקסל, דוח שעות, הוצאות בכל מטבע עם שערי המרה, מאגר
+ידע, הגדרות לכל מרחב, וייבוא מהמערכת הישנה (`scripts/import_billing.py`).
+ראו `docs/BILLING-MIGRATION-PLAN.md`.
+
 **סקרי אבטחה** (אפיון PT): חוזה בדיקה, מנוע מדיניות, אכיפת יעדים ו-DNS,
 ריצה חיה, ממצאים, כספת ראיות מושחרות, דוחות, ביקורת. ראו `docs/PT_ARCHITECTURE.md`.
 
@@ -31,12 +40,13 @@
 cd server && python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
 export CC_SECRET_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
 uvicorn app:app --port 8000 --reload
-python -m pytest -q            # 117 בדיקות; PT_TEST_DATABASE_URL מפעיל בדיקות Postgres
+python -m pytest -q            # 124 בדיקות; PT_TEST_DATABASE_URL מפעיל בדיקות Postgres
 
 # web
 cd web && npm install && npm run dev     # מפנה /api ל-localhost:8000
 npm run build
 node e2e/cc.spec.cjs http://localhost:5173 e2e/shots-cc      # זרימת מרכז הבקרה בדפדפן
+node e2e/billing.spec.cjs http://localhost:5173 e2e/shots-billing   # זרימת חיוב ושירות (דורש PT_ORG_HMAC_KEY בשרת)
 node e2e/flow.spec.cjs http://localhost:5173 target.test:8081 e2e/shots   # זרימת PT (דורש יעד מעבדה, ראו web/e2e/target_server.py)
 ```
 

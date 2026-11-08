@@ -47,6 +47,30 @@ export const api = {
   post: <T>(p: string, b?: unknown) => request<T>('POST', p, b ?? {}),
   patch: <T>(p: string, b: unknown) => request<T>('PATCH', p, b),
   del: <T>(p: string) => request<T>('DELETE', p),
+  put: <T>(p: string, b: unknown) => request<T>('PUT', p, b),
+  /** Authenticated fetch of a non-JSON resource (print view, spreadsheet). */
+  raw: async (p: string): Promise<Response> => {
+    const token = getToken()
+    const res = await fetch(`/api${p}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    if (!res.ok) throw new ApiError(res.status, await res.text())
+    return res
+  },
+}
+
+/** Open a server-rendered print view in a new tab (the token travels in the header, not the URL). */
+export async function openPrint(path: string): Promise<void> {
+  const w = window.open('', '_blank')
+  const html = await (await api.raw(path)).text()
+  if (!w) return
+  w.document.open(); w.document.write(html); w.document.close()
+}
+
+/** Download an authenticated file. */
+export async function download(path: string, filename: string): Promise<void> {
+  const blob = await (await api.raw(path)).blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 5000)
 }
 
 // --- types (subset of the backend models) ---------------------------------
